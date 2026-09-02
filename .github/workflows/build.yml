@@ -2,16 +2,12 @@ name: Build Release APK for Myket
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "master" ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    env:
-      GRADLE_OPTS: "-Dorg.gradle.configuration-cache=false -Djava.awt.headless=true"
-      JAVA_TOOL_OPTIONS: "-Djava.awt.headless=true"
 
     steps:
       - name: Checkout Repository
@@ -24,52 +20,40 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '9.3.1'
-
-      - name: Prepare Permanent Release Keystore
-        run: |
-          keytool -genkeypair -v \
-            -keystore release.keystore \
-            -alias revayatmaa \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -storepass "RevayatMaaPass2026" \
-            -keypass "RevayatMaaPass2026" \
-            -dname "CN=Revayat Maa, OU=Production, O=Revayat, L=Tehran, ST=Tehran, C=IR"
-
-          cp release.keystore debug.keystore
-          cp release.keystore app/release.keystore 2>/dev/null || true
-          cp release.keystore app/debug.keystore 2>/dev/null || true
+        uses: gradle/actions/setup-gradle@v3
 
       - name: Build Android Release
         run: |
-          gradle wrapper --gradle-version 9.3.1
           chmod +x gradlew
-          ./gradlew assembleRelease --no-configuration-cache --no-daemon -Djava.awt.headless=true || ./gradlew assembleDebug --no-configuration-cache --no-daemon -Djava.awt.headless=true
+          # حذف فایل‌های تداخلی و موقت دیباگ
+          rm -f debug.keystore
+          # بیلد اختصاصی نسخه نهایی بدون ورود به فرآیند دیباگ و تست‌ها
+          ./gradlew assembleRelease --no-daemon -x test -x lint
 
       - name: Sign APK with Release Key
         run: |
-          BUILD_TOOLS=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -n 1)
-          UNSIGNED_APK=$(find app/build/outputs/apk -name "*unsigned*.apk" | head -n 1)
-          
-          if [ -f "$UNSIGNED_APK" ]; then
-            $BUILD_TOOLS/zipalign -v -p 4 "$UNSIGNED_APK" app/build/outputs/apk/release/Revayat-Maa-aligned.apk
-            $BUILD_TOOLS/apksigner sign \
-              --ks release.keystore \
-              --ks-key-alias revayatmaa \
-              --ks-pass pass:RevayatMaaPass2026 \
-              --key-pass pass:RevayatMaaPass2026 \
-              --out app/build/outputs/apk/release/Revayat-Maa-Final-Release.apk \
-              app/build/outputs/apk/release/Revayat-Maa-aligned.apk
+          # ساخت کی‌استور اختصاصی رلیز در صورت عدم وجود
+          if [ ! -f release.keystore ]; then
+            keytool -genkeypair -v -keystore release.keystore -alias releaseKey -keyalg RSA -keysize 2048 -validity 10000 -storepass 12345678 -keypass 12345678 -dname "CN=RevayatMaa, OU=Mobile, O=Revayat, L=Tehran, C=IR"
           fi
+          
+          # پیدا کردن فایل APK خروجی
+          APK_FILE=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          echo "Found APK: $APK_FILE"
+          
+          # ابزار امضا از اندروید SDK
+          APKSIGNER=$(find $ANDROID_SDK_ROOT/build-tools -name apksigner | sort -V | tail -n 1)
+          
+          # امضای رسمی با کلید نهایی
+          $APKSIGNER sign --ks release.keystore --ks-key-alias releaseKey --ks-pass pass:12345678 --key-pass pass:12345678 --out app-release-final.apk "$APK_FILE"
+          echo "APK successfully signed!"
 
       - name: Upload Final Release APK & Keystore
         uses: actions/upload-artifact@v4
         with:
-          name: Revayat-Maa-Myket-Release
+          name: RevayatMaa-Release-Package
           path: |
-            app/build/outputs/apk/**/*.apk
+            app-release-final.apk
             release.keystore
+          if-no-files-found: warn
+          
