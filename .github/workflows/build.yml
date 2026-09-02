@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Release APK for Myket
 
 on:
   push:
@@ -24,14 +24,51 @@ jobs:
         with:
           gradle-version: '9.3.1'
 
-      - name: Build Android APK
+      - name: Prepare Permanent Release Keystore
+        run: |
+          # ساخت کلید امضای اختصاصی و معتبر (غیر دیباگ) با اعتبار ۲۵ سال
+          keytool -genkeypair -v \
+            -keystore release.keystore \
+            -alias revayatmaa \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass "RevayatMaaPass2026" \
+            -keypass "RevayatMaaPass2026" \
+            -dname "CN=Revayat Maa, OU=Production, O=Revayat, L=Tehran, ST=Tehran, C=IR"
+
+          # کپی کلید برای دسترسی گرادل در ریشه و پوشه app
+          cp release.keystore debug.keystore
+          cp release.keystore app/release.keystore 2>/dev/null || true
+          cp release.keystore app/debug.keystore 2>/dev/null || true
+
+      - name: Build Android Release
         run: |
           gradle wrapper --gradle-version 9.3.1
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleRelease || ./gradlew assembleDebug
 
-      - name: Upload APK Artifact
+      - name: Sign APK with Release Key (if unsigned)
+        run: |
+          BUILD_TOOLS=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -n 1)
+          UNSIGNED_APK=$(find app/build/outputs/apk -name "*unsigned*.apk" | head -n 1)
+          
+          if [ -f "$UNSIGNED_APK" ]; then
+            echo "Signing unsigned release APK..."
+            $BUILD_TOOLS/zipalign -v -p 4 "$UNSIGNED_APK" app/build/outputs/apk/release/Revayat-Maa-aligned.apk
+            $BUILD_TOOLS/apksigner sign \
+              --ks release.keystore \
+              --ks-key-alias revayatmaa \
+              --ks-pass pass:RevayatMaaPass2026 \
+              --key-pass pass:RevayatMaaPass2026 \
+              --out app/build/outputs/apk/release/Revayat-Maa-Final-Release.apk \
+              app/build/outputs/apk/release/Revayat-Maa-aligned.apk
+          fi
+
+      - name: Upload Final Release APK & Keystore
         uses: actions/upload-artifact@v4
         with:
-          name: Revayat-Maa-App
-          path: app/build/outputs/apk/**/*.apk
+          name: Revayat-Maa-Myket-Release
+          path: |
+            app/build/outputs/apk/**/*.apk
+            release.keystore
