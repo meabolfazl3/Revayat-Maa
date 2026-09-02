@@ -22,31 +22,54 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: Prepare Project Files
+        run: |
+          # در صورت وجود فایل زیپ، به طور خودکار استخراج شود
+          shopt -s nullglob
+          zip_files=(*.zip)
+          if [ ${#zip_files[@]} -gt 0 ]; then
+            echo "Extracting: ${zip_files[0]}"
+            unzip -o "${zip_files[0]}"
+          fi
+          # پاکسازی فایل‌های خطاساز قبلی
+          rm -f debug.keystore
+
       - name: Build Android Release
         run: |
-          chmod +x gradlew
-          # حذف فایل‌های تداخلی و موقت دیباگ
-          rm -f debug.keystore
-          # بیلد اختصاصی نسخه نهایی بدون ورود به فرآیند دیباگ و تست‌ها
-          ./gradlew assembleRelease --no-daemon -x test -x lint
+          # جستجوی خودکار برای پیدا کردن gradlew در هر پوشه‌ای از مخزن
+          GRADLEW_PATH=$(find . -name "gradlew" -type f | head -n 1)
+
+          if [ -n "$GRADLEW_PATH" ]; then
+            echo "Found gradlew at: $GRADLEW_PATH"
+            chmod +x "$GRADLEW_PATH"
+            cd "$(dirname "$GRADLEW_PATH")"
+            ./gradlew assembleRelease --no-daemon -x test -x lint
+          else
+            echo "No gradlew found! Running global gradle..."
+            BUILD_PATH=$(find . -name "build.gradle*" -type f | head -n 1)
+            if [ -n "$BUILD_PATH" ]; then
+              cd "$(dirname "$BUILD_PATH")"
+            fi
+            gradle assembleRelease --no-daemon -x test -x lint
+          fi
 
       - name: Sign APK with Release Key
         run: |
-          # ساخت کی‌استور اختصاصی رلیز در صورت عدم وجود
+          # پیدا کردن فایل خروجی APK در هر کجای پروژه
+          APK_FILE=$(find . -path "*/outputs/apk/*" -name "*.apk" | head -n 1)
+          if [ -z "$APK_FILE" ]; then
+            APK_FILE=$(find . -name "*.apk" | head -n 1)
+          fi
+          echo "Target APK: $APK_FILE"
+
+          # ساخت کلید امضا در صورت نیاز
           if [ ! -f release.keystore ]; then
             keytool -genkeypair -v -keystore release.keystore -alias releaseKey -keyalg RSA -keysize 2048 -validity 10000 -storepass 12345678 -keypass 12345678 -dname "CN=RevayatMaa, OU=Mobile, O=Revayat, L=Tehran, C=IR"
           fi
-          
-          # پیدا کردن فایل APK خروجی
-          APK_FILE=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
-          echo "Found APK: $APK_FILE"
-          
-          # ابزار امضا از اندروید SDK
+
           APKSIGNER=$(find $ANDROID_SDK_ROOT/build-tools -name apksigner | sort -V | tail -n 1)
-          
-          # امضای رسمی با کلید نهایی
           $APKSIGNER sign --ks release.keystore --ks-key-alias releaseKey --ks-pass pass:12345678 --key-pass pass:12345678 --out app-release-final.apk "$APK_FILE"
-          echo "APK successfully signed!"
+          echo "APK signed successfully!"
 
       - name: Upload Final Release APK & Keystore
         uses: actions/upload-artifact@v4
@@ -55,5 +78,5 @@ jobs:
           path: |
             app-release-final.apk
             release.keystore
-          if-no-files-found: warn
+          if-no-files-found: error
           
