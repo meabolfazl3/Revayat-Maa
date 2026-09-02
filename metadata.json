@@ -1,0 +1,7 @@
+{
+  "name": "روایت ما",
+  "description": "کتاب‌خوان هوشمند رمان راز الماس و مجموعه داستان‌های کانال روایت ما اثر ابوالفضل پورنجف با تم‌های دوگانه، استودیو پوستر و استایل اختصاصی",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

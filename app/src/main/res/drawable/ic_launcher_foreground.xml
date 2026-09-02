@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 1. Golden Bottom Covers / Trims under pages -->
+    <path
+        android:pathData="M23,73 C23,77 34,79 51,86 L51,88 C34,81 23,79 23,75 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="23"
+                android:startY="73"
+                android:endX="51"
+                android:endY="88"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#F3CF7A" />
+                <item android:offset="1.0" android:color="#C78F23" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <path
+        android:pathData="M56,86 C73,79 85,77 85,73 L85,75 C85,79 73,81 56,88 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="56"
+                android:startY="86"
+                android:endX="85"
+                android:endY="73"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#C78F23" />
+                <item android:offset="1.0" android:color="#F3CF7A" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Center Gold Spine Tip -->
+    <path
+        android:pathData="M51,85 L54,89 L57,85 Z"
+        android:fillColor="#DCA12D" />
+
+    <!-- 2. Left Deep Navy Page -->
+    <path
+        android:pathData="M25,38 C35,41 47,47 53,56 L53,85 C47,77 35,71 25,72 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="25"
+                android:startY="38"
+                android:endX="53"
+                android:endY="85"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#0D254C" />
+                <item android:offset="1.0" android:color="#050F22" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Left Page Inner Accent Stroke -->
+    <path
+        android:pathData="M25,38 C35,41 47,47 53,56 L53,85 C47,77 35,71 25,72 Z"
+        android:strokeColor="#1E457E"
+        android:strokeWidth="1.2"
+        android:fillColor="#00000000" />
+
+    <!-- 3. Right Deep Navy Page Base -->
+    <path
+        android:pathData="M83,44 C73,41 61,47 55,56 L55,85 C61,77 73,71 83,72 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="83"
+                android:startY="44"
+                android:endX="55"
+                android:endY="85"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#0D254C" />
+                <item android:offset="1.0" android:color="#050F22" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 4. Right Glass / Glossy Overlay Page with Gold Rim -->
+    <path
+        android:pathData="M79,38 C70,40 60,46 55,55 L55,84 C60,76 70,70 79,72 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="79"
+                android:startY="38"
+                android:endX="55"
+                android:endY="84"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#D01E4070" />
+                <item android:offset="1.0" android:color="#C00C1E3C" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <path
+        android:pathData="M79,38 C70,40 60,46 55,55 L55,84 C60,76 70,70 79,72 Z"
+        android:strokeColor="#FDE4A6"
+        android:strokeWidth="1.5"
+        android:fillColor="#00000000" />
+
+    <!-- Glass Specular Highlight Sheen -->
+    <path
+        android:pathData="M73,39 C69,41 63,46 60,53 L56,77 C62,62 68,49 73,39 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="73"
+                android:startY="39"
+                android:endX="56"
+                android:endY="77"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#80FFFFFF" />
+                <item android:offset="1.0" android:color="#00FFFFFF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 5. 4-point Sparkle Star to left of quill -->
+    <path
+        android:pathData="M45,30 C45.3,34 46.8,35.5 51,35.8 C46.8,36.1 45.3,37.6 45,41.6 C44.7,37.6 43.2,36.1 39,35.8 C43.2,35.5 44.7,34 45,30 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="39"
+                android:startY="30"
+                android:endX="51"
+                android:endY="42"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FFF8E0" />
+                <item android:offset="0.5" android:color="#EAB744" />
+                <item android:offset="1.0" android:color="#CA891C" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 6. Golden Quill Feather -->
+    <path
+        android:pathData="M52,60 C51,52 51,40 56,28 C59,20 65,15 70,16 C70,18 68,24 65,29 C63,32 61.5,33 62,35 C66,34 68,32 69,31 C68,36 65,42 60.5,47 C57,53 54,57 52,60 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="70"
+                android:startY="16"
+                android:endX="52"
+                android:endY="60"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FFF2D0" />
+                <item android:offset="0.3" android:color="#F5CE6F" />
+                <item android:offset="0.7" android:color="#E5A934" />
+                <item android:offset="1.0" android:color="#B87816" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Quill Feather Spine Line -->
+    <path
+        android:pathData="M52.5,60 C53.5,49 57.5,35 67,18"
+        android:strokeColor="#FFF8E7"
+        android:strokeWidth="1.2"
+        android:strokeLineCap="round" />
+</vector>
+

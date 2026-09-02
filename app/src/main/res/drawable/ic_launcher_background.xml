@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Full background canvas -->
+    <path
+        android:pathData="M0,0h108v108h-108z"
+        android:fillColor="#F6F1EA" />
+
+    <!-- Soft ambient inner circle -->
+    <path
+        android:pathData="M54,54m-45,0a45,45 0 1,1 90,0a45,45 0 1,1 -90,0">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:centerX="54"
+                android:centerY="50"
+                android:gradientRadius="48"
+                android:type="radial">
+                <item android:offset="0.0" android:color="#FFFFFF" />
+                <item android:offset="0.7" android:color="#FAF7F2" />
+                <item android:offset="1.0" android:color="#EDE5D8" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>
