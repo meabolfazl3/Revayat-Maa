@@ -22,84 +22,80 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Auto-Fix Gradle Config & Keystore
+      - name: Prepare Workspace and Keystore
         run: |
-          # استخراج پروژه در صورت وجود فایل فشرده
           shopt -s nullglob
           zip_files=(*.zip)
           if [ ${#zip_files[@]} -gt 0 ]; then
             unzip -o "${zip_files[0]}"
           fi
 
-          # ساخت فایل کلید با اطلاعات استاندارد
+          WORKDIR="$GITHUB_WORKSPACE"
+          cd "$WORKDIR"
+
+          STORE_PASS=$(grep -r "storePassword" . 2>/dev/null | head -n 1 | sed -E 's/.*["'"'"']([^"'"'"']+)["'"'"'].*/\1/' || true)
+          KEY_PASS=$(grep -r "keyPassword" . 2>/dev/null | head -n 1 | sed -E 's/.*["'"'"']([^"'"'"']+)["'"'"'].*/\1/' || true)
+          KEY_ALIAS=$(grep -r "keyAlias" . 2>/dev/null | head -n 1 | sed -E 's/.*["'"'"']([^"'"'"']+)["'"'"'].*/\1/' || true)
+
+          [ -z "$STORE_PASS" ] && STORE_PASS="12345678"
+          [ -z "$KEY_PASS" ] && KEY_PASS="12345678"
+          [ -z "$KEY_ALIAS" ] && KEY_ALIAS="upload"
+
+          rm -f "$WORKDIR/my-upload-key.jks"
           keytool -genkeypair -v \
-            -keystore my-upload-key.jks \
-            -alias upload \
+            -keystore "$WORKDIR/my-upload-key.jks" \
+            -alias "$KEY_ALIAS" \
             -keyalg RSA \
             -keysize 2048 \
             -validity 10000 \
-            -storepass 12345678 \
-            -keypass 12345678 \
+            -storepass "$STORE_PASS" \
+            -keypass "$KEY_PASS" \
             -dname "CN=RevayatMaa, OU=Mobile, O=Revayat, L=Tehran, C=IR"
 
-          # کپی کردن فایل کلید در تمام پوشه‌های موجود تا گرادل در هر مسیری آن را بیابد
-          find . -type d -exec cp my-upload-key.jks {}/ \; 2>/dev/null || true
-          cp my-upload-key.jks .. 2>/dev/null || true
+          cp "$WORKDIR/my-upload-key.jks" "$WORKDIR/app/" 2>/dev/null || true
+          find "$WORKDIR" -type d -exec cp "$WORKDIR/my-upload-key.jks" {}/ 2>/dev/null \; || true
 
-          # خنثی‌کردن گیر دادن به امضا و هشدارهای سخت‌گیرانه Lint در تمام فایل‌های گرادل
-          python3 - << 'EOF'
-          import os, re
-
-          for root, dirs, files in os.walk("."):
-              for f in files:
-                  if f.startswith("build.gradle"):
-                      path = os.path.join(root, f)
-                      with open(path, "r", encoding="utf-8", errors="ignore") as fp:
-                          content = fp.read()
-                      
-                      # غیرفعال کردن الزام امضا از داخل گرادل (تا با apksigner مستقل امضا شود)
-                      content = re.sub(r'signingConfig\s*=\s*signingConfigs\.[a-zA-Z0-9_]+', '// signingConfig bypassed', content)
-                      content = re.sub(r'signingConfig\s+signingConfigs\.[a-zA-Z0-9_]+', '// signingConfig bypassed', content)
-                      
-                      # غیرفعال کردن توقف بیلد روی خطاهای متنی/Lint
-                      if "android {" in content and "abortOnError" not in content:
-                          content = content.replace("android {", "android {\n    lint { abortOnError = false; checkReleaseBuilds = false }\n")
-
-                      with open(path, "w", encoding="utf-8") as fp:
-                          fp.write(content)
-          print("All Gradle configs neutralized and optimized successfully!")
-          EOF
-
-      - name: Compile Release APK
+      - name: Compile and Package APK
         run: |
-          # پیدا کردن محل اصلی فایل اجرایی گرادل
-          GRADLEW_PATH=$(find . -name "gradlew" -type f | head -n 1)
+          WORKDIR="$GITHUB_WORKSPACE"
+          GRADLEW_PATH=$(find "$WORKDIR" -name "gradlew" -type f | head -n 1)
 
           if [ -n "$GRADLEW_PATH" ]; then
             chmod +x "$GRADLEW_PATH"
             cd "$(dirname "$GRADLEW_PATH")"
             ./gradlew assembleRelease --no-daemon -x test -x lint -x lintVitalRelease -x lintVitalAnalyzeRelease
           else
-            BUILD_PATH=$(find . -name "build.gradle*" -type f | head -n 1)
-            if [ -n "$BUILD_PATH" ]; then
-              cd "$(dirname "$BUILD_PATH")"
-            fi
+            cd "$WORKDIR"
             gradle assembleRelease --no-daemon -x test -x lint -x lintVitalRelease -x lintVitalAnalyzeRelease
           fi
 
-      - name: Sign APK with Official Release Key
+      - name: Finalize and Verify Signature
         run: |
-          # پیدا کردن فایل خروجی تولید شده توسط گرادل
-          APK_RAW=$(find . -path "*/outputs/apk/*" -name "*.apk" | head -n 1)
+          WORKDIR="$GITHUB_WORKSPACE"
+          APK_RAW=$(find "$WORKDIR" -path "*/outputs/apk/*" -name "*.apk" | head -n 1)
           if [ -z "$APK_RAW" ]; then
-            APK_RAW=$(find . -name "*.apk" | head -n 1)
+            APK_RAW=$(find "$WORKDIR" -name "*.apk" | head -n 1)
           fi
-          echo "Target Raw APK: $APK_RAW"
 
-          # امضای رسمی با ابزار استاندارد اندروید SDK (apksigner)
+          echo "Found APK at: $APK_RAW"
+          cp "$APK_RAW" "$WORKDIR/RevayatMaa-Release.apk"
+
+          STORE_PASS=$(grep -r "storePassword" "$WORKDIR" 2>/dev/null | head -n 1 | sed -E 's/.*["'"'"']([^"'"'"']+)["'"'"'].*/\1/' || true)
+          KEY_PASS=$(grep -r "keyPassword" "$WORKDIR" 2>/dev/null | head -n 1 | sed -E 's/.*["'"'"']([^"'"'"']+)["'"'"'].*/\1/' || true)
+          KEY_ALIAS=$(grep -r "keyAlias" "$WORKDIR" 2>/dev/null | head -n 1 | sed -E 's/.*["'"'"']([^"'"'"']+)["'"'"'].*/\1/' || true)
+
+          [ -z "$STORE_PASS" ] && STORE_PASS="12345678"
+          [ -z "$KEY_PASS" ] && KEY_PASS="12345678"
+          [ -z "$KEY_ALIAS" ] && KEY_ALIAS="upload"
+
           APKSIGNER=$(find $ANDROID_SDK_ROOT/build-tools -name apksigner | sort -V | tail -n 1)
-          $APKSIGNER sign --ks my-upload-key.jks --ks-key-alias upload --ks-pass pass:12345678 --key-pass pass:12345678 --out RevayatMaa-Release.apk "$APK_RAW"
-          echo "APK successfully signed and ready for installation!"
+          if ! $APKSIGNER verify "$WORKDIR/RevayatMaa-Release.apk" 2>/dev/null; then
+            echo "Signing APK manually with apksigner..."
+            $APKSIGNER sign --ks "$WORKDIR/my-upload-key.jks" --ks-key-alias "$KEY_ALIAS" --ks-pass "pass:$STORE_PASS" --key-pass "pass:$KEY_PASS" --out "$WORKDIR/RevayatMaa-Signed.apk" "$WORKDIR/RevayatMaa-Release.apk"
+            mv "$WORKDIR/RevayatMaa-Signed.apk" "$WORKDIR/RevayatMaa-Release.apk"
+          else
+            echo "APK is already signed by Gradle."
+          fi
 
       - name: Upload Final Release Package
         uses: actions/upload-artifact@v4
