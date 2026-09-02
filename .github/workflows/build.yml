@@ -9,6 +9,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      GRADLE_OPTS: "-Dorg.gradle.configuration-cache=false -Djava.awt.headless=true"
+      JAVA_TOOL_OPTIONS: "-Djava.awt.headless=true"
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -26,7 +30,6 @@ jobs:
 
       - name: Prepare Permanent Release Keystore
         run: |
-          # ساخت کلید امضای اختصاصی و معتبر (غیر دیباگ) با اعتبار ۲۵ سال
           keytool -genkeypair -v \
             -keystore release.keystore \
             -alias revayatmaa \
@@ -37,7 +40,6 @@ jobs:
             -keypass "RevayatMaaPass2026" \
             -dname "CN=Revayat Maa, OU=Production, O=Revayat, L=Tehran, ST=Tehran, C=IR"
 
-          # کپی کلید برای دسترسی گرادل در ریشه و پوشه app
           cp release.keystore debug.keystore
           cp release.keystore app/release.keystore 2>/dev/null || true
           cp release.keystore app/debug.keystore 2>/dev/null || true
@@ -46,15 +48,14 @@ jobs:
         run: |
           gradle wrapper --gradle-version 9.3.1
           chmod +x gradlew
-          ./gradlew assembleRelease || ./gradlew assembleDebug
+          ./gradlew assembleRelease --no-configuration-cache --no-daemon -Djava.awt.headless=true || ./gradlew assembleDebug --no-configuration-cache --no-daemon -Djava.awt.headless=true
 
-      - name: Sign APK with Release Key (if unsigned)
+      - name: Sign APK with Release Key
         run: |
           BUILD_TOOLS=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -n 1)
           UNSIGNED_APK=$(find app/build/outputs/apk -name "*unsigned*.apk" | head -n 1)
           
           if [ -f "$UNSIGNED_APK" ]; then
-            echo "Signing unsigned release APK..."
             $BUILD_TOOLS/zipalign -v -p 4 "$UNSIGNED_APK" app/build/outputs/apk/release/Revayat-Maa-aligned.apk
             $BUILD_TOOLS/apksigner sign \
               --ks release.keystore \
