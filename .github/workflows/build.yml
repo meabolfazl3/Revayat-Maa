@@ -30,61 +30,104 @@ jobs:
             unzip -o "${zip_files[0]}"
           fi
 
-          WORKDIR="$GITHUB_WORKSPACE"
-          cd "$WORKDIR"
-
-          # پاکسازی فایل‌های تداخلی
           find . -path "*/src/*" -name "*.jks" -delete 2>/dev/null || true
           find . -path "*/res/*" -name "*.jks" -delete 2>/dev/null || true
-          rm -f "$WORKDIR/my-upload-key.jks"
+          find . -path "*/src/*" -name "*.keystore" -delete 2>/dev/null || true
+          find . -path "*/res/*" -name "*.keystore" -delete 2>/dev/null || true
+          rm -f my-upload-key.jks debug.keystore
 
-          # ساخت فیزیکی فایل کلید با رمزهای استاندارد و مشخص
-          # تمام رمزها عمداً "12345678" و الیاس "upload" تنظیم می‌شوند تا گرادل به راحتی آن‌ها را قبول کند.
           keytool -genkeypair -v \
-            -keystore "$WORKDIR/my-upload-key.jks" \
-            -alias "upload" \
+            -keystore my-upload-key.jks \
+            -alias upload \
             -keyalg RSA \
             -keysize 2048 \
             -validity 10000 \
-            -storepass "12345678" \
-            -keypass "12345678" \
+            -storepass 12345678 \
+            -keypass 12345678 \
             -dname "CN=RevayatMaa, OU=Mobile, O=Revayat, L=Tehran, C=IR"
 
-          # قرار دادن کلید دقیقاً در مسیر app (نه داخل res)
-          cp "$WORKDIR/my-upload-key.jks" "$WORKDIR/app/my-upload-key.jks" 2>/dev/null || true
+          mkdir -p app
+          cp my-upload-key.jks app/my-upload-key.jks 2>/dev/null || true
 
-      - name: Compile and Package APK with Explicit Signing
+          cat << 'EOF' >> gradle.properties
+          storeFile=my-upload-key.jks
+          storePassword=12345678
+          keyAlias=upload
+          keyPassword=12345678
+          KEYSTORE_PASSWORD=12345678
+          KEY_PASSWORD=12345678
+          KEY_ALIAS=upload
+          MYAPP_UPLOAD_STORE_FILE=my-upload-key.jks
+          MYAPP_UPLOAD_STORE_PASSWORD=12345678
+          MYAPP_UPLOAD_KEY_ALIAS=upload
+          MYAPP_UPLOAD_KEY_PASSWORD=12345678
+          EOF
+
+          mkdir -p ~/.gradle
+          cp gradle.properties ~/.gradle/gradle.properties
+
+          python3 - << 'PYEOF'
+          import os, re
+          for root, dirs, files in os.walk("."):
+              if "res" in root or "build" in root:
+                  continue
+              for f in files:
+                  if f.startswith("build.gradle"):
+                      p = os.path.join(root, f)
+                      with open(p, "r", encoding="utf-8", errors="ignore") as fp:
+                          lines = fp.readlines()
+                      new_lines = []
+                      for line in lines:
+                          if re.search(r'signingConfig\s*(=|\()', line) or line.strip().startswith("signingConfig "):
+                              new_lines.append("// " + line)
+                          else:
+                              new_lines.append(line)
+                      with open(p, "w", encoding="utf-8") as fp:
+                          fp.writelines(new_lines)
+          print("Signing configs prepared.")
+          PYEOF
+
+      - name: Build Android Release
+        env:
+          KEYSTORE_PASSWORD: "12345678"
+          KEY_PASSWORD: "12345678"
+          KEY_ALIAS: "upload"
+          STORE_PASSWORD: "12345678"
         run: |
-          WORKDIR="$GITHUB_WORKSPACE"
-          
-          # اطمینان از پاکسازی res قبل از بیلد
-          find "$WORKDIR" -path "*/res/*" -name "*.jks" -delete 2>/dev/null || true
+          find . -path "*/res/*" -name "*.jks" -delete 2>/dev/null || true
 
-          GRADLEW_PATH=$(find "$WORKDIR" -name "gradlew" -type f | head -n 1)
-          [ -z "$GRADLEW_PATH" ] && GRADLEW_PATH="$WORKDIR/gradlew"
+          GRADLE_CMD="gradle"
+          GRADLEW_FILE=$(find . -name "gradlew" -type f | head -n 1)
 
-          chmod +x "$GRADLEW_PATH"
-          cd "$(dirname "$GRADLEW_PATH")"
-
-          # این دستور، دقیقاً و مستقیماً رمزها را به گرادل تزریق می‌کند تا جلوی ارور را بگیرد.
-          ./gradlew assembleRelease \
-            -Pandroid.signingConfigs.release.storeFile=my-upload-key.jks \
-            -Pandroid.signingConfigs.release.storePassword=12345678 \
-            -Pandroid.signingConfigs.release.keyAlias=upload \
-            -Pandroid.signingConfigs.release.keyPassword=12345678 \
-            --no-daemon -x test -x lint -x lintVitalRelease -x lintVitalAnalyzeRelease
-
-      - name: Verify Signature and Prepare Package
-        run: |
-          WORKDIR="$GITHUB_WORKSPACE"
-          APK_RAW=$(find "$WORKDIR" -path "*/outputs/apk/*" -name "*.apk" | head -n 1)
-          if [ -z "$APK_RAW" ]; then
-            APK_RAW=$(find "$WORKDIR" -name "*.apk" | head -n 1)
+          if [ -n "$GRADLEW_FILE" ] && [ -f "$GRADLEW_FILE" ]; then
+            echo "Using gradlew found at: $GRADLEW_FILE"
+            chmod +x "$GRADLEW_FILE"
+            GRADLE_CMD="$GRADLEW_FILE"
+          else
+            echo "Using system gradle directly."
           fi
 
-          echo "Found APK at: $APK_RAW"
-          # کپی فایل نهایی با نام درست
-          cp "$APK_RAW" "$WORKDIR/RevayatMaa-Release.apk"
+          $GRADLE_CMD assembleRelease --no-daemon -x test -x lint -x lintVitalRelease -x lintVitalAnalyzeRelease
+
+      - name: Sign APK with Official Release Key
+        run: |
+          APK_RAW=$(find . -path "*/outputs/apk/*" -name "*.apk" | head -n 1)
+          if [ -z "$APK_RAW" ]; then
+            APK_RAW=$(find . -name "*.apk" | head -n 1)
+          fi
+
+          echo "Found APK: $APK_RAW"
+
+          APKSIGNER=$(find $ANDROID_SDK_ROOT/build-tools -name apksigner | sort -V | tail -n 1)
+          $APKSIGNER sign --ks my-upload-key.jks \
+            --ks-key-alias upload \
+            --ks-pass pass:12345678 \
+            --key-pass pass:12345678 \
+            --out RevayatMaa-Release.apk \
+            "$APK_RAW"
+
+          $APKSIGNER verify RevayatMaa-Release.apk
+          echo "APK successfully verified and signed!"
 
       - name: Upload Final Release Package
         uses: actions/upload-artifact@v4
