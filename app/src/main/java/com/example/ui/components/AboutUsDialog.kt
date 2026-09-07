@@ -83,12 +83,20 @@ fun AboutUsDialog(
                             shapeRadius = 12.dp,
                             elevation = 2.dp
                         )
-                        Text(
-                            text = "درباره ما | روایت ما",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        Column {
+                            Text(
+                                text = "درباره ما | روایت ما",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "نسخه ۳.۳",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
 
                     IconButton(

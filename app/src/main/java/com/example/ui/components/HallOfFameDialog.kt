@@ -252,7 +252,15 @@ fun HallOfFameDialog(
                                             trackColor = sysColors.border
                                         )
 
-                                        // Theme Unlock Hint
+                                        // Theme Unlock Progression Hint
+                                        val themeHintText = when {
+                                            unlockedCount >= 12 -> "👑 تبریک! تمام پوسته‌های ویژه از جمله «زرشکی سلطنتی» بازگشایی شدند!"
+                                            unlockedCount >= 8 -> "✨ پوسته‌های سایبر، یشم و شفق قطبی باز هستند! (با ۱۲ مدال: «زرشکی سلطنتی» 👑)"
+                                            unlockedCount >= 5 -> "✨ پوسته‌های سایبر و یشم باز شدند! (با ۸ مدال: «شفق قطبی نوردیک» 🌌)"
+                                            unlockedCount >= 2 -> "✨ پوسته نئون بنفش باز شد! (با ۵ مدال: «یشم امپراتوری» 🎋)"
+                                            else -> "🔒 با کسب ۲ مدال، اولین پوسته ویژه «نئون بنفش سایبرپانک» باز می‌شود!"
+                                        }
+
                                         Surface(
                                             shape = RoundedCornerShape(12.dp),
                                             color = Color(0xFFA855F7).copy(alpha = 0.14f),
@@ -265,7 +273,7 @@ fun HallOfFameDialog(
                                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                                             ) {
                                                 Text(
-                                                    text = if (unlockedCount >= 2) "✨ تم اختصاصی «نئون بنفش سایبرپانک» بازگشایی شد!" else "🔒 با کسب ۲ مدال، پوسته ویژه «نئون بنفش سایبرپانک» باز می‌شود!",
+                                                    text = themeHintText,
                                                     fontSize = 12.sp,
                                                     fontWeight = FontWeight.SemiBold,
                                                     color = if (unlockedCount >= 2) Color(0xFFC084FC) else sysColors.textMuted

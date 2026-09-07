@@ -167,7 +167,6 @@ class NovelRepository(context: Context) {
         val lineHeight = prefs.getFloat(KEY_SETTINGS_LINE_HEIGHT, 2.2f)
         val uiScale = prefs.getInt(KEY_SETTINGS_UI_SCALE, 100)
         val scrollSpeed = prefs.getInt(KEY_SETTINGS_SCROLL_SPEED, 1)
-        val readingModeName = prefs.getString(KEY_SETTINGS_READING_MODE, com.example.data.model.ReadingMode.SCROLL.name) ?: com.example.data.model.ReadingMode.SCROLL.name
 
         return ReaderUiSettings(
             systemTheme = runCatching { SystemTheme.valueOf(sysThemeName) }.getOrDefault(SystemTheme.TELEGRAM_DARK),
@@ -178,7 +177,7 @@ class NovelRepository(context: Context) {
             lineHeightMultiplier = lineHeight,
             uiScalePercent = uiScale,
             autoScrollSpeed = scrollSpeed,
-            readingMode = runCatching { com.example.data.model.ReadingMode.valueOf(readingModeName) }.getOrDefault(com.example.data.model.ReadingMode.SCROLL)
+            readingMode = com.example.data.model.ReadingMode.SCROLL
         )
     }
 
@@ -192,7 +191,6 @@ class NovelRepository(context: Context) {
             .putFloat(KEY_SETTINGS_LINE_HEIGHT, settings.lineHeightMultiplier)
             .putInt(KEY_SETTINGS_UI_SCALE, settings.uiScalePercent)
             .putInt(KEY_SETTINGS_SCROLL_SPEED, settings.autoScrollSpeed)
-            .putString(KEY_SETTINGS_READING_MODE, settings.readingMode.name)
             .apply()
     }
 
@@ -315,12 +313,35 @@ class NovelRepository(context: Context) {
                 }
             }
 
+            val totalChaptersCompleted = mutableSetOf<Int>()
+            if (obj.has("totalChaptersCompleted")) {
+                val arr = obj.getJSONArray("totalChaptersCompleted")
+                for (i in 0 until arr.length()) {
+                    totalChaptersCompleted.add(arr.getInt(i))
+                }
+            } else {
+                totalChaptersCompleted.addAll(chaptersCompleted)
+            }
+
+            val totalChaptersReadCount = obj.optInt("totalChaptersReadCount", totalChaptersCompleted.size)
+            val nightOwlUnlocked = obj.optBoolean("nightOwlUnlocked", false)
+
             val badges = mutableSetOf<String>()
             if (obj.has("badges")) {
                 val arr = obj.getJSONArray("badges")
                 for (i in 0 until arr.length()) {
-                    badges.add(arr.getString(i))
+                    val bId = arr.getString(i)
+                    val mapped = when (bId) {
+                        "fire_reader" -> BadgeType.STREAK_5.id
+                        "word_marathon" -> BadgeType.CHAPTER_3.id
+                        else -> bId
+                    }
+                    badges.add(mapped)
                 }
+            }
+
+            if (nightOwlUnlocked || badges.contains(BadgeType.NIGHT_OWL.id)) {
+                badges.add(BadgeType.NIGHT_OWL.id)
             }
 
             ReadingStatsData(
@@ -329,8 +350,11 @@ class NovelRepository(context: Context) {
                 currentStreakDays = currentStreak,
                 lastActiveDate = lastActiveDate,
                 chaptersCompletedToday = chaptersCompleted,
+                totalChaptersCompleted = totalChaptersCompleted,
+                totalChaptersReadCount = totalChaptersReadCount,
                 unlockedBadges = badges,
                 nightMinutesRead = nightMinutes,
+                nightOwlUnlocked = nightOwlUnlocked || badges.contains(BadgeType.NIGHT_OWL.id),
                 morningMinutesRead = morningMinutes
             )
         } catch (e: Exception) {
@@ -346,7 +370,9 @@ class NovelRepository(context: Context) {
                 put("currentStreak", stats.currentStreakDays)
                 put("lastActiveDate", stats.lastActiveDate)
                 put("nightMinutes", stats.nightMinutesRead)
+                put("nightOwlUnlocked", stats.nightOwlUnlocked || stats.unlockedBadges.contains(BadgeType.NIGHT_OWL.id))
                 put("morningMinutes", stats.morningMinutesRead)
+                put("totalChaptersReadCount", stats.totalChaptersReadCount)
 
                 val mapObj = JSONObject()
                 stats.dailyMinutesMap.forEach { (k, v) -> mapObj.put(k, v) }
@@ -355,6 +381,10 @@ class NovelRepository(context: Context) {
                 val chArr = JSONArray()
                 stats.chaptersCompletedToday.forEach { chArr.put(it) }
                 put("chaptersCompleted", chArr)
+
+                val tchArr = JSONArray()
+                stats.totalChaptersCompleted.forEach { tchArr.put(it) }
+                put("totalChaptersCompleted", tchArr)
 
                 val bArr = JSONArray()
                 stats.unlockedBadges.forEach { bArr.put(it) }
@@ -419,32 +449,47 @@ class NovelRepository(context: Context) {
         // Evaluate Badges
         val newlyUnlocked = mutableListOf<BadgeType>()
         val currentBadges = stats.unlockedBadges.toMutableSet()
+        val totalMinutes = (newTotalSeconds / 60).toInt()
 
-        // 1. Night Owl (00:00 - 04:00, >= 10 mins)
-        if (!currentBadges.contains(BadgeType.NIGHT_OWL.id) && newNightMinutes >= 10) {
+        // 1. Night Owl: at least 30 minutes active reading strictly between 00:00 and 04:00 AM
+        var isNightOwlUnlocked = stats.nightOwlUnlocked || currentBadges.contains(BadgeType.NIGHT_OWL.id)
+        if (!isNightOwlUnlocked && newNightMinutes >= 30) {
+            isNightOwlUnlocked = true
             currentBadges.add(BadgeType.NIGHT_OWL.id)
             newlyUnlocked.add(BadgeType.NIGHT_OWL)
+        } else if (isNightOwlUnlocked) {
+            currentBadges.add(BadgeType.NIGHT_OWL.id)
         }
 
-        // 2. Fiery Reader (streak >= 5 days)
-        if (!currentBadges.contains(BadgeType.FIRE_READER.id) && newStreak >= 5) {
-            currentBadges.add(BadgeType.FIRE_READER.id)
-            newlyUnlocked.add(BadgeType.FIRE_READER)
+        // 2. Progressive Time Badges (30m, 3h = 180m, 10h = 600m, 25h = 1500m)
+        if (!currentBadges.contains(BadgeType.TIME_30M.id) && totalMinutes >= 30) {
+            currentBadges.add(BadgeType.TIME_30M.id)
+            newlyUnlocked.add(BadgeType.TIME_30M)
+        }
+        if (!currentBadges.contains(BadgeType.TIME_3H.id) && totalMinutes >= 180) {
+            currentBadges.add(BadgeType.TIME_3H.id)
+            newlyUnlocked.add(BadgeType.TIME_3H)
+        }
+        if (!currentBadges.contains(BadgeType.TIME_10H.id) && totalMinutes >= 600) {
+            currentBadges.add(BadgeType.TIME_10H.id)
+            newlyUnlocked.add(BadgeType.TIME_10H)
+        }
+        if (!currentBadges.contains(BadgeType.TIME_25H.id) && totalMinutes >= 1500) {
+            currentBadges.add(BadgeType.TIME_25H.id)
+            newlyUnlocked.add(BadgeType.TIME_25H)
         }
 
-        // 3. Word Marathon (>= 3 chapters today)
-        if (!currentBadges.contains(BadgeType.WORD_MARATHON.id) && chaptersToday.size >= 3) {
-            currentBadges.add(BadgeType.WORD_MARATHON.id)
-            newlyUnlocked.add(BadgeType.WORD_MARATHON)
+        // 3. Progressive Streak Badges (5 days, 14 days)
+        if (!currentBadges.contains(BadgeType.STREAK_5.id) && newStreak >= 5) {
+            currentBadges.add(BadgeType.STREAK_5.id)
+            newlyUnlocked.add(BadgeType.STREAK_5)
+        }
+        if (!currentBadges.contains(BadgeType.STREAK_14.id) && newStreak >= 14) {
+            currentBadges.add(BadgeType.STREAK_14.id)
+            newlyUnlocked.add(BadgeType.STREAK_14)
         }
 
-        // 4. Diamond Lover (total read >= 2 hours = 7200 seconds)
-        if (!currentBadges.contains(BadgeType.DIAMOND_LOVER.id) && newTotalSeconds >= 7200L) {
-            currentBadges.add(BadgeType.DIAMOND_LOVER.id)
-            newlyUnlocked.add(BadgeType.DIAMOND_LOVER)
-        }
-
-        // 5. Early Bird (05:00 - 08:00, >= 5 mins)
+        // 4. Early Bird (05:00 - 08:00, >= 5 mins)
         if (!currentBadges.contains(BadgeType.EARLY_BIRD.id) && newMorningMinutes >= 5) {
             currentBadges.add(BadgeType.EARLY_BIRD.id)
             newlyUnlocked.add(BadgeType.EARLY_BIRD)
@@ -458,6 +503,7 @@ class NovelRepository(context: Context) {
             chaptersCompletedToday = chaptersToday,
             unlockedBadges = currentBadges,
             nightMinutesRead = newNightMinutes,
+            nightOwlUnlocked = isNightOwlUnlocked,
             morningMinutesRead = newMorningMinutes
         )
         saveReadingStats(updatedStats)
@@ -468,19 +514,51 @@ class NovelRepository(context: Context) {
     fun recordChapterFinished(chapterId: Int): List<BadgeType> {
         val stats = getReadingStats()
         val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
-        val updatedChapters = stats.chaptersCompletedToday.toMutableSet()
-        updatedChapters.add(chapterId)
+        val updatedTodayChapters = stats.chaptersCompletedToday.toMutableSet().apply { add(chapterId) }
+        val updatedTotalChapters = stats.totalChaptersCompleted.toMutableSet().apply { add(chapterId) }
+        val newChaptersReadCount = stats.totalChaptersReadCount + 1
 
         val newlyUnlocked = mutableListOf<BadgeType>()
         val currentBadges = stats.unlockedBadges.toMutableSet()
 
-        if (!currentBadges.contains(BadgeType.WORD_MARATHON.id) && updatedChapters.size >= 3) {
-            currentBadges.add(BadgeType.WORD_MARATHON.id)
-            newlyUnlocked.add(BadgeType.WORD_MARATHON)
+        // Progressive chapter milestone check (by unique chapters or cumulative chapters finished)
+        val chaptersProgress = maxOf(updatedTotalChapters.size, newChaptersReadCount)
+
+        if (!currentBadges.contains(BadgeType.CHAPTER_3.id) && chaptersProgress >= 3) {
+            currentBadges.add(BadgeType.CHAPTER_3.id)
+            newlyUnlocked.add(BadgeType.CHAPTER_3)
+        }
+        if (!currentBadges.contains(BadgeType.CHAPTER_5.id) && chaptersProgress >= 5) {
+            currentBadges.add(BadgeType.CHAPTER_5.id)
+            newlyUnlocked.add(BadgeType.CHAPTER_5)
+        }
+        if (!currentBadges.contains(BadgeType.CHAPTER_10.id) && chaptersProgress >= 10) {
+            currentBadges.add(BadgeType.CHAPTER_10.id)
+            newlyUnlocked.add(BadgeType.CHAPTER_10)
+        }
+        if (!currentBadges.contains(BadgeType.CHAPTER_20.id) && chaptersProgress >= 20) {
+            currentBadges.add(BadgeType.CHAPTER_20.id)
+            newlyUnlocked.add(BadgeType.CHAPTER_20)
+        }
+        if (!currentBadges.contains(BadgeType.CHAPTER_50.id) && chaptersProgress >= 50) {
+            currentBadges.add(BadgeType.CHAPTER_50.id)
+            newlyUnlocked.add(BadgeType.CHAPTER_50)
+        }
+        if (!currentBadges.contains(BadgeType.CHAPTER_100.id) && chaptersProgress >= 100) {
+            currentBadges.add(BadgeType.CHAPTER_100.id)
+            newlyUnlocked.add(BadgeType.CHAPTER_100)
+        }
+
+        // Diamond lover badge: finishing chapter 43 / full novel completion
+        if (!currentBadges.contains(BadgeType.DIAMOND_LOVER.id) && (chapterId == 43 || updatedTotalChapters.size >= 43)) {
+            currentBadges.add(BadgeType.DIAMOND_LOVER.id)
+            newlyUnlocked.add(BadgeType.DIAMOND_LOVER)
         }
 
         val updatedStats = stats.copy(
-            chaptersCompletedToday = updatedChapters,
+            chaptersCompletedToday = updatedTodayChapters,
+            totalChaptersCompleted = updatedTotalChapters,
+            totalChaptersReadCount = newChaptersReadCount,
             unlockedBadges = currentBadges,
             lastActiveDate = if (stats.lastActiveDate.isEmpty()) todayStr else stats.lastActiveDate
         )

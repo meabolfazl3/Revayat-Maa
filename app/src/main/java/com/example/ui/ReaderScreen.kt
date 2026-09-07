@@ -26,8 +26,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -93,7 +91,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.withFrameNanos
 import com.example.data.NovelRepository
 import com.example.data.model.Chapter
-import com.example.data.model.ReadingMode
 import com.example.ui.components.AppLogo
 import com.example.ui.components.BadgeCelebrationDialog
 import com.example.ui.components.BookmarksDialog
@@ -121,25 +118,9 @@ fun ReaderScreen(viewModel: ReaderViewModel) {
     val currentChapter = uiState.chapters.getOrNull(uiState.currentChapterIndex)
         ?: Chapter(1, "بدون عنوان", false, emptyList())
 
-    val bookPages = remember(currentChapter.content, uiState.settings.fontSizeSp, uiState.settings.lineHeightMultiplier) {
-        buildChapterPages(
-            paragraphs = currentChapter.content,
-            fontSizeSp = uiState.settings.fontSizeSp,
-            lineHeightMultiplier = uiState.settings.lineHeightMultiplier
-        )
-    }
-    val totalPages = bookPages.size.coerceAtLeast(1)
-    val savedInitialPosition = remember(currentChapter.id) {
-        viewModel.getSavedReadingPosition(currentChapter.id)
-    }
-    val pagerState = rememberPagerState(
-        initialPage = savedInitialPosition.pageIndex.coerceIn(0, (totalPages - 1).coerceAtLeast(0)),
-        pageCount = { totalPages }
-    )
-
     // Ultra-smooth frame-synchronized auto-scroll engine (requestAnimationFrame equivalent)
-    LaunchedEffect(uiState.isAutoScrolling, uiState.settings.autoScrollSpeed, uiState.settings.readingMode) {
-        if (uiState.isAutoScrolling && uiState.settings.readingMode == ReadingMode.SCROLL) {
+    LaunchedEffect(uiState.isAutoScrolling, uiState.settings.autoScrollSpeed) {
+        if (uiState.isAutoScrolling) {
             // Speed 1: ~32 pixels/second (gentle, relaxing reading pace)
             val pixelsPerSecond = when (uiState.settings.autoScrollSpeed) {
                 1 -> 32f
@@ -166,20 +147,12 @@ fun ReaderScreen(viewModel: ReaderViewModel) {
     }
 
     // Live Reading Percentage Calculation
-    val readingPercent by remember(uiState.settings.readingMode, totalPages) {
+    val readingPercent by remember {
         derivedStateOf {
-            if (uiState.settings.readingMode == ReadingMode.PAGE_FLIP) {
-                if (totalPages > 1) {
-                    (((pagerState.currentPage + 1).toFloat() / totalPages.toFloat()) * 100).toInt().coerceIn(0, 100)
-                } else {
-                    100
-                }
+            if (scrollState.maxValue > 0) {
+                ((scrollState.value.toFloat() / scrollState.maxValue.toFloat()) * 100).toInt().coerceIn(0, 100)
             } else {
-                if (scrollState.maxValue > 0) {
-                    ((scrollState.value.toFloat() / scrollState.maxValue.toFloat()) * 100).toInt().coerceIn(0, 100)
-                } else {
-                    0
-                }
+                0
             }
         }
     }
@@ -187,25 +160,18 @@ fun ReaderScreen(viewModel: ReaderViewModel) {
     // Exact Reading Position Restoration when chapter opens or on "Continue Reading"
     LaunchedEffect(currentChapter.id, uiState.restorePositionTimestamp) {
         val saved = viewModel.getSavedReadingPosition(currentChapter.id)
-        if (uiState.settings.readingMode == ReadingMode.SCROLL) {
-            if (saved.scrollOffset > 0) {
-                // Wait for layout frame to guarantee content height is computed
-                withFrameNanos { }
-                scrollState.scrollTo(saved.scrollOffset)
-            } else {
-                scrollState.scrollTo(0)
-            }
+        if (saved.scrollOffset > 0) {
+            // Wait for layout frame to guarantee content height is computed
+            withFrameNanos { }
+            scrollState.scrollTo(saved.scrollOffset)
         } else {
-            val targetPage = saved.pageIndex.coerceIn(0, (totalPages - 1).coerceAtLeast(0))
-            if (pagerState.currentPage != targetPage) {
-                pagerState.scrollToPage(targetPage)
-            }
+            scrollState.scrollTo(0)
         }
     }
 
     // Live Debounced Reading Position Saver (Scroll Mode)
-    LaunchedEffect(scrollState.value, currentChapter.id, uiState.settings.readingMode) {
-        if (uiState.settings.readingMode == ReadingMode.SCROLL && currentChapter.content.isNotEmpty()) {
+    LaunchedEffect(scrollState.value, currentChapter.id) {
+        if (currentChapter.content.isNotEmpty()) {
             delay(150) // 150ms debounce
             viewModel.saveReadingPosition(
                 chapterId = currentChapter.id,
@@ -213,32 +179,6 @@ fun ReaderScreen(viewModel: ReaderViewModel) {
                 pageIndex = 0,
                 progressPercent = readingPercent
             )
-        }
-    }
-
-    // Live Debounced Reading Position Saver (Page Flip Mode)
-    LaunchedEffect(pagerState.currentPage, currentChapter.id, uiState.settings.readingMode) {
-        if (uiState.settings.readingMode == ReadingMode.PAGE_FLIP && currentChapter.content.isNotEmpty()) {
-            delay(150) // 150ms debounce
-            viewModel.saveReadingPosition(
-                chapterId = currentChapter.id,
-                scrollOffset = 0,
-                pageIndex = pagerState.currentPage,
-                progressPercent = readingPercent
-            )
-        }
-    }
-
-    // Sync paragraph selection with pager if in PAGE_FLIP mode
-    LaunchedEffect(uiState.selectedParagraphIndex) {
-        val selectedIdx = uiState.selectedParagraphIndex
-        if (selectedIdx != null && uiState.settings.readingMode == ReadingMode.PAGE_FLIP) {
-            val targetPage = bookPages.indexOfFirst { page ->
-                page.segments.any { it.paragraphIndex == selectedIdx }
-            }
-            if (targetPage != -1 && pagerState.currentPage != targetPage) {
-                pagerState.animateScrollToPage(targetPage)
-            }
         }
     }
 
@@ -439,513 +379,166 @@ fun ReaderScreen(viewModel: ReaderViewModel) {
                         .padding(innerPadding)
                         .background(readerColors.bg)
                 ) {
-                    if (uiState.settings.readingMode == ReadingMode.SCROLL) {
-                        // 1. SCROLL MODE (پیمایش عمودی پیوسته)
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .verticalScroll(scrollState)
-                                .padding(horizontal = 20.dp, vertical = 24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                    // Continuous Vertical Scroll Reading Container
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(scrollState)
+                            .padding(horizontal = 20.dp, vertical = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Hero Chapter Banner
+                        Surface(
+                            color = readerColors.badgeBg,
+                            shape = RoundedCornerShape(20.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, readerColors.badgeText.copy(alpha = 0.3f))
                         ) {
-                            // Hero Chapter Banner
-                            Surface(
-                                color = readerColors.badgeBg,
-                                shape = RoundedCornerShape(20.dp),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, readerColors.badgeText.copy(alpha = 0.3f))
+                            Text(
+                                text = "رمان ${NovelRepository.NOVEL_TITLE} اثر ${NovelRepository.NOVEL_AUTHOR}",
+                                color = readerColors.badgeText,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Text(
+                            text = currentChapter.title,
+                            color = readerColors.title,
+                            fontSize = 24.sp,
+                            fontFamily = NovelThemes.getFontFamily(uiState.settings.readerFont),
+                            fontWeight = FontWeight.ExtraBold,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.testTag("chapter_main_title")
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Time-to-Read Capsule Badge
+                        Surface(
+                            shape = RoundedCornerShape(50.dp),
+                            color = readerColors.badgeBg,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, readerColors.badgeText.copy(alpha = 0.35f)),
+                            modifier = Modifier.testTag("time_to_read_badge")
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Text(
-                                    text = "رمان ${NovelRepository.NOVEL_TITLE} اثر ${NovelRepository.NOVEL_AUTHOR}",
-                                    color = readerColors.badgeText,
-                                    fontSize = 12.sp,
+                                    text = "⏱️ زمان تقریبی مطالعه: ${persianNumber(estimatedReadMinutes)} دقیقه (${persianNumber(chapterWordCount)} کلمه)",
+                                    fontSize = 11.5.sp,
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                                    color = readerColors.badgeText
                                 )
                             }
-
-                            Spacer(modifier = Modifier.height(14.dp))
-
-                            Text(
-                                text = currentChapter.title,
-                                color = readerColors.title,
-                                fontSize = 24.sp,
-                                fontFamily = NovelThemes.getFontFamily(uiState.settings.readerFont),
-                                fontWeight = FontWeight.ExtraBold,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.testTag("chapter_main_title")
-                            )
-
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            // Time-to-Read Capsule Badge
-                            Surface(
-                                shape = RoundedCornerShape(50.dp),
-                                color = readerColors.badgeBg,
-                                border = androidx.compose.foundation.BorderStroke(1.dp, readerColors.badgeText.copy(alpha = 0.35f)),
-                                modifier = Modifier.testTag("time_to_read_badge")
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    Text(
-                                        text = "⏱️ زمان تقریبی مطالعه: ${persianNumber(estimatedReadMinutes)} دقیقه (${persianNumber(chapterWordCount)} کلمه)",
-                                        fontSize = 11.5.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = readerColors.badgeText
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(14.dp))
-                            HorizontalDivider(
-                                color = sysColors.border,
-                                thickness = 1.dp,
-                                modifier = Modifier.widthIn(max = 600.dp)
-                            )
-                            Spacer(modifier = Modifier.height(22.dp))
-
-                            // Paragraphs List - Continuous Single Reader Container
-                            Column(
-                                modifier = Modifier
-                                    .widthIn(max = 760.dp)
-                                    .fillMaxWidth()
-                                    .testTag("readerContent")
-                            ) {
-                                currentChapter.content.forEachIndexed { pIdx, paragraph ->
-                                    val isBookmarked = uiState.bookmarks.any {
-                                        it.chapterId == currentChapter.id && it.paragraphIndex == pIdx
-                                    }
-                                    val isSelected = uiState.selectedParagraphIndex == pIdx
-
-                                    ParagraphCard(
-                                        paragraphText = paragraph,
-                                        index = pIdx,
-                                        isSelected = isSelected,
-                                        isBookmarked = isBookmarked,
-                                        readerColors = readerColors,
-                                        sysColors = sysColors,
-                                        fontSizeSp = uiState.settings.fontSizeSp,
-                                        lineHeightMultiplier = uiState.settings.lineHeightMultiplier,
-                                        readerFont = uiState.settings.readerFont,
-                                        onParagraphClick = {
-                                            if (isSelected) {
-                                                viewModel.clearParagraphSelection()
-                                            } else {
-                                                viewModel.selectParagraph(pIdx, paragraph)
-                                            }
-                                        },
-                                        onBookmarkClick = {
-                                            viewModel.addBookmarkForCurrentSelection()
-                                        },
-                                        onQuotePosterClick = {
-                                            viewModel.setQuotePosterDialogVisible(true)
-                                        }
-                                    )
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(28.dp))
-
-                            // Chapter Navigation Bottom Bar
-                            Row(
-                                modifier = Modifier
-                                    .widthIn(max = 760.dp)
-                                    .fillMaxWidth()
-                                    .padding(top = 16.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Button(
-                                    onClick = { viewModel.navigateChapter(-1) },
-                                    enabled = uiState.currentChapterIndex > 0,
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = sysColors.surface,
-                                        contentColor = sysColors.text,
-                                        disabledContainerColor = sysColors.surface.copy(alpha = 0.4f),
-                                        disabledContentColor = sysColors.textMuted.copy(alpha = 0.4f)
-                                    ),
-                                    shape = RoundedCornerShape(16.dp),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, sysColors.border),
-                                    modifier = Modifier
-                                        .height(48.dp)
-                                        .testTag("prev_chapter_button")
-                                ) {
-                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("قسمت قبلی", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                }
-
-                                Button(
-                                    onClick = { viewModel.navigateChapter(1) },
-                                    enabled = uiState.currentChapterIndex < uiState.chapters.lastIndex,
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = sysColors.surface,
-                                        contentColor = sysColors.text,
-                                        disabledContainerColor = sysColors.surface.copy(alpha = 0.4f),
-                                        disabledContentColor = sysColors.textMuted.copy(alpha = 0.4f)
-                                    ),
-                                    shape = RoundedCornerShape(16.dp),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, sysColors.border),
-                                    modifier = Modifier
-                                        .height(48.dp)
-                                        .testTag("next_chapter_button")
-                                ) {
-                                    Text("قسمت بعدی", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
-                                }
-                            }
-
-                            // Extra bottom padding for floating dock
-                            Spacer(modifier = Modifier.height(100.dp))
                         }
-                    } else {
-                        // 2. PAGE FLIP / SLIDE MODE (نمایش صفحه‌به‌صفحه اسلایدی - بدون هیچ‌گونه اسکرول عمودی)
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            HorizontalPager(
-                                state = pagerState,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .testTag("page_flip_horizontal_pager")
-                            ) { pageIndex ->
-                                val page = bookPages.getOrElse(pageIndex) { BookPage(pageIndex) }
 
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(horizontal = 20.dp, vertical = 14.dp),
-                                    contentAlignment = Alignment.TopCenter
-                                ) {
-                                    // Touch navigation zones (Left turns next, Right turns prev in Persian RTL)
-                                    Row(modifier = Modifier.fillMaxSize()) {
-                                        Box(
-                                            modifier = Modifier
-                                                .weight(0.18f)
-                                                .fillMaxHeight()
-                                                .clickable(
-                                                    interactionSource = remember { MutableInteractionSource() },
-                                                    indication = null
-                                                ) {
-                                                    if (pagerState.currentPage < totalPages - 1) {
-                                                        scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
-                                                    } else if (uiState.currentChapterIndex < uiState.chapters.lastIndex) {
-                                                        viewModel.navigateChapter(1)
-                                                    }
-                                                }
-                                        )
-                                        Spacer(modifier = Modifier.weight(0.64f))
-                                        Box(
-                                            modifier = Modifier
-                                                .weight(0.18f)
-                                                .fillMaxHeight()
-                                                .clickable(
-                                                    interactionSource = remember { MutableInteractionSource() },
-                                                    indication = null
-                                                ) {
-                                                    if (pagerState.currentPage > 0) {
-                                                        scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
-                                                    } else if (uiState.currentChapterIndex > 0) {
-                                                        viewModel.navigateChapter(-1)
-                                                    }
-                                                }
-                                        )
-                                    }
+                        Spacer(modifier = Modifier.height(14.dp))
+                        HorizontalDivider(
+                            color = sysColors.border,
+                            thickness = 1.dp,
+                            modifier = Modifier.widthIn(max = 600.dp)
+                        )
+                        Spacer(modifier = Modifier.height(22.dp))
 
-                                    // Content Column - Fixed Viewport Height (Zero vertical scroll)
-                                    Column(
-                                        modifier = Modifier
-                                            .widthIn(max = 760.dp)
-                                            .fillMaxSize()
-                                            .padding(bottom = if (uiState.isFocusMode) 48.dp else 96.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        if (page.isCoverPage) {
-                                            // Hero Chapter Header on First Page
-                                            Surface(
-                                                color = readerColors.badgeBg,
-                                                shape = RoundedCornerShape(20.dp),
-                                                border = androidx.compose.foundation.BorderStroke(1.dp, readerColors.badgeText.copy(alpha = 0.3f))
-                                            ) {
-                                                Text(
-                                                    text = "رمان ${NovelRepository.NOVEL_TITLE} اثر ${NovelRepository.NOVEL_AUTHOR}",
-                                                    color = readerColors.badgeText,
-                                                    fontSize = 11.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                                                )
-                                            }
+                        // Paragraphs List - Continuous Single Reader Container
+                        Column(
+                            modifier = Modifier
+                                .widthIn(max = 760.dp)
+                                .fillMaxWidth()
+                                .testTag("readerContent")
+                        ) {
+                            currentChapter.content.forEachIndexed { pIdx, paragraph ->
+                                val isBookmarked = uiState.bookmarks.any {
+                                    it.chapterId == currentChapter.id && it.paragraphIndex == pIdx
+                                }
+                                val isSelected = uiState.selectedParagraphIndex == pIdx
 
-                                            Spacer(modifier = Modifier.height(8.dp))
-
-                                            Text(
-                                                text = currentChapter.title,
-                                                color = readerColors.title,
-                                                fontSize = 20.sp,
-                                                fontFamily = NovelThemes.getFontFamily(uiState.settings.readerFont),
-                                                fontWeight = FontWeight.ExtraBold,
-                                                textAlign = TextAlign.Center,
-                                                modifier = Modifier.testTag("chapter_main_title_paged")
-                                            )
-
-                                            Spacer(modifier = Modifier.height(8.dp))
-
-                                            // Time-to-Read Capsule Badge in Page Flip Mode
-                                            Surface(
-                                                shape = RoundedCornerShape(50.dp),
-                                                color = readerColors.badgeBg,
-                                                border = androidx.compose.foundation.BorderStroke(1.dp, readerColors.badgeText.copy(alpha = 0.35f)),
-                                                modifier = Modifier.testTag("paged_time_to_read_badge")
-                                            ) {
-                                                Row(
-                                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                                ) {
-                                                    Text(
-                                                        text = "⏱️ زمان مطالعه: ${persianNumber(estimatedReadMinutes)} دقیقه",
-                                                        fontSize = 11.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = readerColors.badgeText
-                                                    )
-                                                }
-                                            }
-
-                                            Spacer(modifier = Modifier.height(10.dp))
-                                            HorizontalDivider(
-                                                color = sysColors.border,
-                                                thickness = 1.dp,
-                                                modifier = Modifier.fillMaxWidth()
-                                            )
-                                            Spacer(modifier = Modifier.height(10.dp))
-                                        } else if (!page.isEndPage) {
-                                            // Header on subsequent pages
-                                            Row(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(bottom = 6.dp),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Text(
-                                                    text = currentChapter.title,
-                                                    color = readerColors.title.copy(alpha = 0.7f),
-                                                    fontSize = 11.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                    modifier = Modifier.weight(1f)
-                                                )
-                                                Text(
-                                                    text = "صفحه ${persianNumber(pageIndex + 1)} از ${persianNumber(totalPages)}",
-                                                    color = sysColors.textMuted,
-                                                    fontSize = 11.sp,
-                                                    fontWeight = FontWeight.Medium
-                                                )
-                                            }
-                                            HorizontalDivider(
-                                                color = sysColors.border.copy(alpha = 0.4f),
-                                                thickness = 0.8.dp,
-                                                modifier = Modifier.fillMaxWidth()
-                                            )
-                                            Spacer(modifier = Modifier.height(10.dp))
-                                        }
-
-                                        if (page.isEndPage) {
-                                            // Completion & next chapter card on final page
-                                            Spacer(modifier = Modifier.weight(0.15f))
-                                            Surface(
-                                                color = sysColors.surfaceGlass,
-                                                shape = RoundedCornerShape(20.dp),
-                                                border = androidx.compose.foundation.BorderStroke(1.dp, sysColors.border),
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(horizontal = 8.dp)
-                                            ) {
-                                                Column(
-                                                    modifier = Modifier.padding(18.dp),
-                                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                                                ) {
-                                                    Surface(
-                                                        shape = CircleShape,
-                                                        color = sysColors.accent.copy(alpha = 0.15f),
-                                                        modifier = Modifier.size(48.dp)
-                                                    ) {
-                                                        Box(contentAlignment = Alignment.Center) {
-                                                            Text("✨", fontSize = 22.sp)
-                                                        }
-                                                    }
-                                                    Text(
-                                                        text = "پایان ${currentChapter.title}",
-                                                        color = sysColors.text,
-                                                        fontSize = 15.sp,
-                                                        fontWeight = FontWeight.Bold
-                                                    )
-                                                    Text(
-                                                        text = "برای مطالعه ادامه این اثر، به قسمت بعدی بروید.",
-                                                        color = sysColors.textMuted,
-                                                        fontSize = 12.sp,
-                                                        textAlign = TextAlign.Center
-                                                    )
-                                                    Row(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        horizontalArrangement = Arrangement.SpaceBetween
-                                                    ) {
-                                                        Button(
-                                                            onClick = { viewModel.navigateChapter(-1) },
-                                                            enabled = uiState.currentChapterIndex > 0,
-                                                            colors = ButtonDefaults.buttonColors(
-                                                                containerColor = sysColors.surface,
-                                                                contentColor = sysColors.text,
-                                                                disabledContainerColor = sysColors.surface.copy(alpha = 0.4f),
-                                                                disabledContentColor = sysColors.textMuted.copy(alpha = 0.4f)
-                                                            ),
-                                                            shape = RoundedCornerShape(14.dp),
-                                                            border = androidx.compose.foundation.BorderStroke(1.dp, sysColors.border),
-                                                            modifier = Modifier.height(44.dp)
-                                                        ) {
-                                                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(16.dp))
-                                                            Spacer(modifier = Modifier.width(4.dp))
-                                                            Text("قسمت قبل", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                                        }
-
-                                                        Button(
-                                                            onClick = { viewModel.navigateChapter(1) },
-                                                            enabled = uiState.currentChapterIndex < uiState.chapters.lastIndex,
-                                                            colors = ButtonDefaults.buttonColors(
-                                                                containerColor = sysColors.primary,
-                                                                contentColor = Color.White,
-                                                                disabledContainerColor = sysColors.surface.copy(alpha = 0.4f),
-                                                                disabledContentColor = sysColors.textMuted.copy(alpha = 0.4f)
-                                                            ),
-                                                            shape = RoundedCornerShape(14.dp),
-                                                            modifier = Modifier.height(44.dp)
-                                                        ) {
-                                                            Text("قسمت بعدی", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                                            Spacer(modifier = Modifier.width(4.dp))
-                                                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            Spacer(modifier = Modifier.weight(0.85f))
+                                ParagraphCard(
+                                    paragraphText = paragraph,
+                                    index = pIdx,
+                                    isSelected = isSelected,
+                                    isBookmarked = isBookmarked,
+                                    readerColors = readerColors,
+                                    sysColors = sysColors,
+                                    fontSizeSp = uiState.settings.fontSizeSp,
+                                    lineHeightMultiplier = uiState.settings.lineHeightMultiplier,
+                                    readerFont = uiState.settings.readerFont,
+                                    onParagraphClick = {
+                                        if (isSelected) {
+                                            viewModel.clearParagraphSelection()
                                         } else {
-                                            // Non-scrolling page text segments
-                                            Column(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .weight(1f),
-                                                verticalArrangement = Arrangement.Top
-                                            ) {
-                                                page.segments.forEach { segment ->
-                                                    val pIdx = segment.paragraphIndex
-                                                    val isBookmarked = uiState.bookmarks.any {
-                                                        it.chapterId == currentChapter.id && it.paragraphIndex == pIdx
-                                                    }
-                                                    val isSelected = uiState.selectedParagraphIndex == pIdx
-
-                                                    ParagraphCard(
-                                                        paragraphText = segment.text,
-                                                        index = pIdx,
-                                                        isSelected = isSelected,
-                                                        isBookmarked = isBookmarked,
-                                                        readerColors = readerColors,
-                                                        sysColors = sysColors,
-                                                        fontSizeSp = uiState.settings.fontSizeSp,
-                                                        lineHeightMultiplier = uiState.settings.lineHeightMultiplier,
-                                                        readerFont = uiState.settings.readerFont,
-                                                        onParagraphClick = {
-                                                            if (isSelected) {
-                                                                viewModel.clearParagraphSelection()
-                                                            } else {
-                                                                viewModel.selectParagraph(pIdx, segment.text)
-                                                            }
-                                                        },
-                                                        onBookmarkClick = {
-                                                            viewModel.addBookmarkForCurrentSelection()
-                                                        },
-                                                        onQuotePosterClick = {
-                                                            viewModel.setQuotePosterDialogVisible(true)
-                                                        }
-                                                    )
-                                                    Spacer(modifier = Modifier.height(8.dp))
-                                                }
-                                            }
+                                            viewModel.selectParagraph(pIdx, paragraph)
                                         }
+                                    },
+                                    onBookmarkClick = {
+                                        viewModel.addBookmarkForCurrentSelection()
+                                    },
+                                    onQuotePosterClick = {
+                                        viewModel.setQuotePosterDialogVisible(true)
                                     }
-                                }
-                            }
-
-                            // Glassmorphic Paged Bottom Floating Navigator & Counter (صفحه ۴ از ۲۸)
-                            Surface(
-                                shape = RoundedCornerShape(50.dp),
-                                color = sysColors.surfaceGlass,
-                                border = androidx.compose.foundation.BorderStroke(1.dp, sysColors.border),
-                                shadowElevation = 10.dp,
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .padding(bottom = if (uiState.isFocusMode) 20.dp else 84.dp)
-                                    .testTag("paged_bottom_nav_bar")
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    IconButton(
-                                        onClick = {
-                                            if (pagerState.currentPage > 0) {
-                                                scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
-                                            } else if (uiState.currentChapterIndex > 0) {
-                                                viewModel.navigateChapter(-1)
-                                            }
-                                        },
-                                        modifier = Modifier.size(32.dp).testTag("paged_prev_page_button")
-                                    ) {
-                                        Icon(
-                                            Icons.AutoMirrored.Filled.ArrowBack,
-                                            contentDescription = "صفحه یا قسمت قبلی",
-                                            tint = sysColors.text,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-
-                                    Surface(
-                                        shape = RoundedCornerShape(50.dp),
-                                        color = sysColors.accent.copy(alpha = 0.15f),
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, sysColors.accent.copy(alpha = 0.3f))
-                                    ) {
-                                        Text(
-                                            text = "صفحه ${persianNumber(pagerState.currentPage + 1)} از ${persianNumber(totalPages)}",
-                                            color = sysColors.accent,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                        )
-                                    }
-
-                                    IconButton(
-                                        onClick = {
-                                            if (pagerState.currentPage < totalPages - 1) {
-                                                scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
-                                            } else if (uiState.currentChapterIndex < uiState.chapters.lastIndex) {
-                                                viewModel.navigateChapter(1)
-                                            }
-                                        },
-                                        modifier = Modifier.size(32.dp).testTag("paged_next_page_button")
-                                    ) {
-                                        Icon(
-                                            Icons.AutoMirrored.Filled.ArrowForward,
-                                            contentDescription = "صفحه یا قسمت بعدی",
-                                            tint = sysColors.text,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                }
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(28.dp))
+
+                        // Chapter Navigation Bottom Bar
+                        Row(
+                            modifier = Modifier
+                                .widthIn(max = 760.dp)
+                                .fillMaxWidth()
+                                .padding(top = 16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Button(
+                                onClick = { viewModel.navigateChapter(-1) },
+                                enabled = uiState.currentChapterIndex > 0,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = sysColors.surface,
+                                    contentColor = sysColors.text,
+                                    disabledContainerColor = sysColors.surface.copy(alpha = 0.4f),
+                                    disabledContentColor = sysColors.textMuted.copy(alpha = 0.4f)
+                                ),
+                                shape = RoundedCornerShape(16.dp),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, sysColors.border),
+                                modifier = Modifier
+                                    .height(48.dp)
+                                    .testTag("prev_chapter_button")
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("قسمت قبلی", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            }
+
+                            Button(
+                                onClick = { viewModel.navigateChapter(1) },
+                                enabled = uiState.currentChapterIndex < uiState.chapters.lastIndex,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = sysColors.surface,
+                                    contentColor = sysColors.text,
+                                    disabledContainerColor = sysColors.surface.copy(alpha = 0.4f),
+                                    disabledContentColor = sysColors.textMuted.copy(alpha = 0.4f)
+                                ),
+                                shape = RoundedCornerShape(16.dp),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, sysColors.border),
+                                modifier = Modifier
+                                    .height(48.dp)
+                                    .testTag("next_chapter_button")
+                            ) {
+                                Text("قسمت بعدی", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
+                            }
+                        }
+
+                        // Extra bottom padding for floating dock
+                        Spacer(modifier = Modifier.height(100.dp))
                     }
 
                     // Floating Reader Dock (at bottom)
@@ -1475,139 +1068,4 @@ fun ParagraphCard(
     }
 }
 
-data class PageParagraphSegment(
-    val paragraphIndex: Int,
-    val text: String,
-    val isContinuation: Boolean = false
-)
 
-data class BookPage(
-    val pageIndex: Int,
-    val isCoverPage: Boolean = false,
-    val isEndPage: Boolean = false,
-    val segments: List<PageParagraphSegment> = emptyList()
-)
-
-fun buildChapterPages(
-    paragraphs: List<String>,
-    fontSizeSp: Float,
-    lineHeightMultiplier: Float
-): List<BookPage> {
-    if (paragraphs.isEmpty()) {
-        return listOf(BookPage(pageIndex = 0, isCoverPage = true, segments = emptyList()))
-    }
-
-    // Dynamic character budget per page based on typography settings to fill full page viewport comfortably
-    val fontFactor = (20f / fontSizeSp.coerceIn(12f, 32f))
-    val lineFactor = (2.0f / lineHeightMultiplier.coerceIn(1.2f, 2.4f))
-    val normalPageCapacity = (1200 * fontFactor * lineFactor).toInt().coerceIn(700, 2200)
-    val coverPageCapacity = (850 * fontFactor * lineFactor).toInt().coerceIn(450, 1600)
-
-    val pages = mutableListOf<BookPage>()
-    var currentSegments = mutableListOf<PageParagraphSegment>()
-    var currentLength = 0
-    var isFirstPage = true
-
-    fun capacity(): Int = if (isFirstPage) coverPageCapacity else normalPageCapacity
-
-    fun flushPage() {
-        if (currentSegments.isNotEmpty() || isFirstPage) {
-            pages.add(
-                BookPage(
-                    pageIndex = pages.size,
-                    isCoverPage = isFirstPage,
-                    segments = currentSegments.toList()
-                )
-            )
-            currentSegments = mutableListOf()
-            currentLength = 0
-            isFirstPage = false
-        }
-    }
-
-    paragraphs.forEachIndexed { pIdx, paragraph ->
-        val trimmed = paragraph.trim()
-        if (trimmed.isEmpty()) return@forEachIndexed
-
-        var remainingText = trimmed
-        var isContinuation = false
-
-        while (remainingText.isNotEmpty()) {
-            val maxCap = capacity()
-            val available = maxCap - currentLength
-
-            if (available < 100 && currentSegments.isNotEmpty()) {
-                flushPage()
-                continue
-            }
-
-            val curCap = capacity()
-            if (remainingText.length <= curCap - currentLength) {
-                currentSegments.add(
-                    PageParagraphSegment(
-                        paragraphIndex = pIdx,
-                        text = remainingText,
-                        isContinuation = isContinuation
-                    )
-                )
-                currentLength += remainingText.length + 20
-                break
-            } else {
-                val sliceLength = (curCap - currentLength).coerceIn(80, remainingText.length)
-                val splitIdx = findBestSentenceOrWordBoundary(remainingText, sliceLength)
-                val chunk = remainingText.substring(0, splitIdx).trim()
-                if (chunk.isNotEmpty()) {
-                    currentSegments.add(
-                        PageParagraphSegment(
-                            paragraphIndex = pIdx,
-                            text = chunk,
-                            isContinuation = isContinuation
-                        )
-                    )
-                }
-                remainingText = remainingText.substring(splitIdx).trim()
-                isContinuation = true
-                flushPage()
-            }
-        }
-    }
-
-    if (currentSegments.isNotEmpty() || isFirstPage) {
-        flushPage()
-    }
-
-    // Add End of Chapter Page
-    pages.add(
-        BookPage(
-            pageIndex = pages.size,
-            isEndPage = true,
-            segments = emptyList()
-        )
-    )
-
-    return if (pages.isEmpty()) listOf(BookPage(0, isCoverPage = true)) else pages
-}
-
-fun findBestSentenceOrWordBoundary(text: String, targetLength: Int): Int {
-    if (text.length <= targetLength) return text.length
-
-    val punctuationDelimiters = listOf(".\n", ".\r\n", ". ", "؟ ", "! ", "؛ ", ":\n", "\n", "، ")
-    for (punc in punctuationDelimiters) {
-        val lastIdx = text.lastIndexOf(punc, targetLength)
-        if (lastIdx in (targetLength / 2)..targetLength) {
-            return lastIdx + punc.length
-        }
-    }
-
-    val lastSpace = text.lastIndexOf(' ', targetLength)
-    if (lastSpace in (targetLength / 2)..targetLength) {
-        return lastSpace + 1
-    }
-
-    val nextSpace = text.indexOf(' ', targetLength)
-    if (nextSpace != -1 && nextSpace - targetLength < 25) {
-        return nextSpace + 1
-    }
-
-    return targetLength.coerceAtMost(text.length)
-}

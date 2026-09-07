@@ -64,16 +64,16 @@ object NovelThemes {
                 accent = Color(0xFF60A5FA),
                 isDark = true
             )
-            SystemTheme.CYBER_PURPLE_NEON -> SystemThemeColors(
-                bg = Color(0xFF0B0418),
-                surface = Color(0xFF17092F),
-                surfaceGlass = Color(0xE617092F),
-                border = Color(0x55C084FC),
-                text = Color(0xFFFAF5FF),
-                textMuted = Color(0xFFC084FC),
-                primary = Color(0xFFA855F7),
-                accent = Color(0xFFE879F9),
-                isDark = true
+            SystemTheme.TELEGRAM_DAY -> SystemThemeColors(
+                bg = Color(0xFFF0F3F7),
+                surface = Color(0xFFFFFFFF),
+                surfaceGlass = Color(0xF0FFFFFF),
+                border = Color(0x1F000000),
+                text = Color(0xFF0F1821),
+                textMuted = Color(0xFF526372),
+                primary = Color(0xFF1F73B7),
+                accent = Color(0xFF0284C7),
+                isDark = false
             )
             SystemTheme.CYBER_NEON -> SystemThemeColors(
                 bg = Color(0xFF080A12),
@@ -86,16 +86,71 @@ object NovelThemes {
                 accent = Color(0xFFFF007F),
                 isDark = true
             )
-            SystemTheme.TELEGRAM_DAY -> SystemThemeColors(
-                bg = Color(0xFFF0F3F7),
+            SystemTheme.SEPIA_PAPER -> SystemThemeColors(
+                bg = Color(0xFFF5EFEB),
+                surface = Color(0xFFEAE2DA),
+                surfaceGlass = Color(0xF0EAE2DA),
+                border = Color(0x338D6E63),
+                text = Color(0xFF2B1D0C),
+                textMuted = Color(0xFF7D6556),
+                primary = Color(0xFF8D6E63),
+                accent = Color(0xFF8D6E63),
+                isDark = false
+            )
+            SystemTheme.PURE_LIGHT -> SystemThemeColors(
+                bg = Color(0xFFFAFAFA),
                 surface = Color(0xFFFFFFFF),
                 surfaceGlass = Color(0xF0FFFFFF),
                 border = Color(0x1F000000),
-                text = Color(0xFF0F1821),
-                textMuted = Color(0xFF526372),
-                primary = Color(0xFF1F73B7),
-                accent = Color(0xFF0284C7),
+                text = Color(0xFF1A1A1A),
+                textMuted = Color(0xFF666666),
+                primary = Color(0xFF1A73E8),
+                accent = Color(0xFF1A73E8),
                 isDark = false
+            )
+            SystemTheme.CYBER_PURPLE_NEON -> SystemThemeColors(
+                bg = Color(0xFF140A28),
+                surface = Color(0xFF1F103C),
+                surfaceGlass = Color(0xE61F103C),
+                border = Color(0x55D946EF),
+                text = Color(0xFFFAF5FF),
+                textMuted = Color(0xFFE879F9),
+                primary = Color(0xFFD946EF),
+                accent = Color(0xFFE879F9),
+                isDark = true
+            )
+            SystemTheme.IMPERIAL_JADE -> SystemThemeColors(
+                bg = Color(0xFF0A1612),
+                surface = Color(0xFF11251E),
+                surfaceGlass = Color(0xE611251E),
+                border = Color(0x5510B981),
+                text = Color(0xFFECFDF5),
+                textMuted = Color(0xFF6EE7B7),
+                primary = Color(0xFF10B981),
+                accent = Color(0xFFF59E0B),
+                isDark = true
+            )
+            SystemTheme.NORDIC_AURORA -> SystemThemeColors(
+                bg = Color(0xFF091E24),
+                surface = Color(0xFF102E38),
+                surfaceGlass = Color(0xE6102E38),
+                border = Color(0x5506B6D4),
+                text = Color(0xFFECFEFF),
+                textMuted = Color(0xFF67E8F9),
+                primary = Color(0xFF06B6D4),
+                accent = Color(0xFF38BDF8),
+                isDark = true
+            )
+            SystemTheme.ROYAL_CRIMSON -> SystemThemeColors(
+                bg = Color(0xFF1A0A0F),
+                surface = Color(0xFF2B1018),
+                surfaceGlass = Color(0xE62B1018),
+                border = Color(0x55FB7185),
+                text = Color(0xFFFFF1F2),
+                textMuted = Color(0xFFFDA4AF),
+                primary = Color(0xFFFB7185),
+                accent = Color(0xFFE11D48),
+                isDark = true
             )
             SystemTheme.WARM_SAND -> SystemThemeColors(
                 bg = Color(0xFFF6EFE0),
@@ -153,6 +208,26 @@ object NovelThemes {
                 badgeBg = Color(0x2638BDF8),
                 badgeText = Color(0xFF38BDF8),
                 isDark = true
+            )
+            ReaderCanvasTheme.SEPIA_PAPER -> ReaderCanvasColors(
+                bg = Color(0xFFF5EFEB),
+                surface = Color(0xFFEAE2DA),
+                title = Color(0xFF2B1D0C),
+                text = Color(0xFF2B1D0C),
+                textSecondary = Color(0xFF7D6556),
+                badgeBg = Color(0x228D6E63),
+                badgeText = Color(0xFF8D6E63),
+                isDark = false
+            )
+            ReaderCanvasTheme.PURE_LIGHT -> ReaderCanvasColors(
+                bg = Color(0xFFFAFAFA),
+                surface = Color(0xFFFFFFFF),
+                title = Color(0xFF1A1A1A),
+                text = Color(0xFF1A1A1A),
+                textSecondary = Color(0xFF666666),
+                badgeBg = Color(0x1F1A73E8),
+                badgeText = Color(0xFF1A73E8),
+                isDark = false
             )
             ReaderCanvasTheme.PARCHMENT -> ReaderCanvasColors(
                 bg = Color(0xFFF5EEDB),

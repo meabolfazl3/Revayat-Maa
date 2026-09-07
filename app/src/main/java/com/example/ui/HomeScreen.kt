@@ -685,7 +685,7 @@ fun HomeDrawerContent(
             modifier = Modifier.align(Alignment.CenterHorizontally)
         ) {
             Text(
-                text = "نسخه ۳.۰ | روایت ما",
+                text = "نسخه ۳.۳ | روایت ما",
                 style = MaterialTheme.typography.labelSmall,
                 color = sysColors.textMuted,
                 fontWeight = FontWeight.Medium,

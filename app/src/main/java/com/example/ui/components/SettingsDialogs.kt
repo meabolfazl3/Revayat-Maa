@@ -241,16 +241,6 @@ fun ReaderSettingsDialog(
                         }
                     }
 
-                    // 3. READING MODE SELECTOR (⚙️ حالت مطالعه / نوع نمایش)
-                    ReadingModeSegmentedControl(
-                        selectedMode = currentSettings.readingMode,
-                        sysColors = sysColors,
-                        onModeSelected = { mode ->
-                            onSettingsChanged(currentSettings.copy(readingMode = mode))
-                        },
-                        tagPrefix = "reader_dialog"
-                    )
-
                     // 4. TEXT SIZE SLIDER (اسلایدر اندازه متن با نمایش عدد زنده تلگرامی)
                     Column(
                         modifier = Modifier
@@ -738,16 +728,25 @@ fun SystemSettingsDialog(
                             fontWeight = FontWeight.Bold
                         )
 
+                        val sortedThemes = remember(unlockedBadgesCount) {
+                            SystemTheme.values().sortedWith(
+                                compareBy(
+                                    { it.requiredBadges > unlockedBadgesCount },
+                                    { it.requiredBadges }
+                                )
+                            )
+                        }
+
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            SystemTheme.values().forEach { themeItem ->
+                            sortedThemes.forEach { themeItem ->
                                 val isSelected = currentSettings.systemTheme == themeItem
                                 val colors = NovelThemes.getSystemColors(themeItem)
-                                val isLocked = themeItem == SystemTheme.CYBER_PURPLE_NEON && unlockedBadgesCount < 2
+                                val isLocked = themeItem.requiredBadges > unlockedBadgesCount
 
                                 Surface(
                                     shape = RoundedCornerShape(16.dp),
@@ -762,7 +761,7 @@ fun SystemSettingsDialog(
                                         .height(96.dp)
                                         .clickable {
                                             if (isLocked) {
-                                                onShowToast("🔒 برای باز کردن این پوسته، حداقل ۲ مدال در اتاق افتخارات کسب کنید!")
+                                                onShowToast("🔒 برای باز کردن این پوسته، به ${persianDigits(themeItem.requiredBadges)} مدال نیاز دارید! (مدال‌های شما: ${persianDigits(unlockedBadgesCount)})")
                                             } else {
                                                 onSettingsChanged(currentSettings.copy(systemTheme = themeItem))
                                             }
@@ -776,19 +775,27 @@ fun SystemSettingsDialog(
                                     ) {
                                         if (isLocked) {
                                             Surface(
-                                                shape = CircleShape,
-                                                color = Color(0xDD0B0418),
+                                                shape = RoundedCornerShape(6.dp),
+                                                color = Color(0xEE0B0418),
                                                 border = BorderStroke(1.dp, Color(0xFFC084FC)),
-                                                modifier = Modifier
-                                                    .size(22.dp)
-                                                    .align(Alignment.TopEnd)
+                                                modifier = Modifier.align(Alignment.TopEnd)
                                             ) {
-                                                Box(contentAlignment = Alignment.Center) {
+                                                Row(
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                                ) {
                                                     Icon(
                                                         imageVector = Icons.Default.Lock,
                                                         contentDescription = "قفل",
                                                         tint = Color(0xFFFFD700),
-                                                        modifier = Modifier.size(12.dp)
+                                                        modifier = Modifier.size(10.dp)
+                                                    )
+                                                    Text(
+                                                        text = "${persianDigits(themeItem.requiredBadges)}",
+                                                        color = Color(0xFFFFD700),
+                                                        fontSize = 9.sp,
+                                                        fontWeight = FontWeight.Bold
                                                     )
                                                 }
                                             }
@@ -891,16 +898,6 @@ fun SystemSettingsDialog(
                         }
                     }
 
-                    // Reading Mode Selector in Main System Settings
-                    ReadingModeSegmentedControl(
-                        selectedMode = currentSettings.readingMode,
-                        sysColors = sysColors,
-                        onModeSelected = { mode ->
-                            onSettingsChanged(currentSettings.copy(readingMode = mode))
-                        },
-                        tagPrefix = "system_dialog"
-                    )
-
                     // UI Scaling Slider
                     Column(
                         modifier = Modifier
@@ -947,129 +944,11 @@ fun SystemSettingsDialog(
     }
 }
 
-/**
- * Glassmorphic Telegram-style Segmented Switcher for Reading Mode
- */
-@Composable
-fun ReadingModeSegmentedControl(
-    selectedMode: ReadingMode,
-    sysColors: SystemThemeColors,
-    onModeSelected: (ReadingMode) -> Unit,
-    tagPrefix: String = "reader",
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(sysColors.surfaceGlass)
-            .border(BorderStroke(1.dp, sysColors.border), RoundedCornerShape(16.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    text = "⚙️",
-                    fontSize = 14.sp
-                )
-                Text(
-                    text = "حالت مطالعه / نوع نمایش",
-                    color = sysColors.text,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Surface(
-                shape = RoundedCornerShape(50.dp),
-                color = sysColors.accent.copy(alpha = 0.15f),
-                border = BorderStroke(1.dp, sysColors.accent.copy(alpha = 0.3f))
-            ) {
-                Text(
-                    text = if (selectedMode == ReadingMode.SCROLL) "اسکرول پیوسته" else "ورق‌زدن اسلایدی",
-                    color = sysColors.accent,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
-                )
-            }
-        }
-
-        // Glassmorphic Segmented Control Frame
-        Surface(
-            shape = RoundedCornerShape(14.dp),
-            color = sysColors.bg.copy(alpha = 0.65f),
-            border = BorderStroke(1.dp, sysColors.border),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                listOf(ReadingMode.SCROLL, ReadingMode.PAGE_FLIP).forEach { mode ->
-                    val isSelected = selectedMode == mode
-                    val scale by animateFloatAsState(
-                        targetValue = if (isSelected) 1.0f else 0.97f,
-                        animationSpec = spring(dampingRatio = 0.8f, stiffness = 400f),
-                        label = "mode_scale_$tagPrefix"
-                    )
-
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = if (isSelected) sysColors.primary else Color.Transparent,
-                        border = if (isSelected) BorderStroke(1.dp, sysColors.accent) else null,
-                        shadowElevation = if (isSelected) 4.dp else 0.dp,
-                        modifier = Modifier
-                            .weight(1f)
-                            .scale(scale)
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable {
-                                onModeSelected(mode)
-                            }
-                            .testTag("${tagPrefix}_reading_mode_${mode.id}")
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 10.dp, horizontal = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Text(
-                                text = mode.emoji,
-                                fontSize = 16.sp
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Column(horizontalAlignment = Alignment.Start) {
-                                Text(
-                                    text = mode.titleFa,
-                                    color = if (isSelected) Color.White else sysColors.text,
-                                    fontSize = 12.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                                )
-                                Text(
-                                    text = mode.descFa,
-                                    color = if (isSelected) Color.White.copy(alpha = 0.85f) else sysColors.textMuted,
-                                    fontSize = 10.sp,
-                                    maxLines = 1
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+private fun persianDigits(num: Any): String {
+    val persianDigits = arrayOf("۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹")
+    return num.toString().map { ch ->
+        if (ch in '0'..'9') persianDigits[ch - '0'] else ch
+    }.joinToString("")
 }
 
 /**
