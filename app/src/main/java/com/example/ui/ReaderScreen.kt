@@ -74,6 +74,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -198,10 +199,19 @@ fun ReaderScreen(viewModel: ReaderViewModel) {
         }
     }
 
-    // Auto-record chapter finished when reading progress reaches 95%
-    LaunchedEffect(readingPercent, currentChapter.id) {
-        if (readingPercent >= 95) {
-            viewModel.recordChapterFinished(currentChapter.id)
+    // Track unique chapters completed in this reader session to prevent duplicate triggers
+    val completedChaptersInSession = remember { mutableSetOf<Int>() }
+
+    // Auto-record chapter finished strictly once when reaching the actual bottom of the chapter
+    LaunchedEffect(currentChapter.id) {
+        snapshotFlow {
+            val maxScroll = scrollState.maxValue
+            maxScroll > 0 && scrollState.value >= (maxScroll - 50)
+        }.collect { reachedBottom ->
+            if (reachedBottom && !completedChaptersInSession.contains(currentChapter.id)) {
+                completedChaptersInSession.add(currentChapter.id)
+                viewModel.recordChapterFinished(currentChapter.id)
+            }
         }
     }
 

@@ -761,7 +761,7 @@ fun SystemSettingsDialog(
                                         .height(96.dp)
                                         .clickable {
                                             if (isLocked) {
-                                                onShowToast("🔒 برای باز کردن این پوسته، به ${persianDigits(themeItem.requiredBadges)} مدال نیاز دارید! (مدال‌های شما: ${persianDigits(unlockedBadgesCount)})")
+                                                onShowToast("🔒 برای باز کردن این پوسته، به ${persianDigits(themeItem.requiredBadges)} امتیاز (مدال) نیاز دارید! (امتیازهای شما: ${persianDigits(unlockedBadgesCount)})")
                                             } else {
                                                 onSettingsChanged(currentSettings.copy(systemTheme = themeItem))
                                             }

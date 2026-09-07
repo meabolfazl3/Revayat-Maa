@@ -396,6 +396,10 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun recordChapterFinished(chapterId: Int) {
+        val currentStats = repository.getReadingStats()
+        if (currentStats.chaptersCompletedToday.contains(chapterId) && currentStats.totalChaptersCompleted.contains(chapterId)) {
+            return
+        }
         val newlyUnlocked = repository.recordChapterFinished(chapterId)
         val updatedStats = repository.getReadingStats()
         _uiState.update {

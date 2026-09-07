@@ -305,8 +305,12 @@ class NovelRepository(context: Context) {
                 }
             }
 
+            val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+            val isNewDay = lastActiveDate.isNotEmpty() && lastActiveDate != todayStr
+
             val chaptersCompleted = mutableSetOf<Int>()
-            if (obj.has("chaptersCompleted")) {
+            // Strictly reset today's unique chapters count to empty (0) on a new day
+            if (!isNewDay && obj.has("chaptersCompleted")) {
                 val arr = obj.getJSONArray("chaptersCompleted")
                 for (i in 0 until arr.length()) {
                     chaptersCompleted.add(arr.getInt(i))
@@ -323,7 +327,8 @@ class NovelRepository(context: Context) {
                 totalChaptersCompleted.addAll(chaptersCompleted)
             }
 
-            val totalChaptersReadCount = obj.optInt("totalChaptersReadCount", totalChaptersCompleted.size)
+            // Strict unique count (NO count++ inflation)
+            val totalChaptersReadCount = totalChaptersCompleted.size
             val nightOwlUnlocked = obj.optBoolean("nightOwlUnlocked", false)
 
             val badges = mutableSetOf<String>()
@@ -514,15 +519,28 @@ class NovelRepository(context: Context) {
     fun recordChapterFinished(chapterId: Int): List<BadgeType> {
         val stats = getReadingStats()
         val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
-        val updatedTodayChapters = stats.chaptersCompletedToday.toMutableSet().apply { add(chapterId) }
-        val updatedTotalChapters = stats.totalChaptersCompleted.toMutableSet().apply { add(chapterId) }
-        val newChaptersReadCount = stats.totalChaptersReadCount + 1
+        val isNewDay = stats.lastActiveDate.isNotEmpty() && stats.lastActiveDate != todayStr
+        val currentToday = if (isNewDay) emptySet() else stats.chaptersCompletedToday
+
+        val updatedTodayChapters = currentToday.toMutableSet()
+        val isNewToday = updatedTodayChapters.add(chapterId)
+
+        val updatedTotalChapters = stats.totalChaptersCompleted.toMutableSet()
+        val isNewTotal = updatedTotalChapters.add(chapterId)
+
+        // If this chapter was already counted today and overall, ignore duplicate triggers
+        if (!isNewToday && !isNewTotal) {
+            return emptyList()
+        }
+
+        // Strictly unique count (size of Set, NEVER count++)
+        val totalChaptersCount = updatedTotalChapters.size
 
         val newlyUnlocked = mutableListOf<BadgeType>()
         val currentBadges = stats.unlockedBadges.toMutableSet()
 
-        // Progressive chapter milestone check (by unique chapters or cumulative chapters finished)
-        val chaptersProgress = maxOf(updatedTotalChapters.size, newChaptersReadCount)
+        // Progressive chapter milestone check strictly by unique chapters count
+        val chaptersProgress = totalChaptersCount
 
         if (!currentBadges.contains(BadgeType.CHAPTER_3.id) && chaptersProgress >= 3) {
             currentBadges.add(BadgeType.CHAPTER_3.id)
@@ -558,7 +576,7 @@ class NovelRepository(context: Context) {
         val updatedStats = stats.copy(
             chaptersCompletedToday = updatedTodayChapters,
             totalChaptersCompleted = updatedTotalChapters,
-            totalChaptersReadCount = newChaptersReadCount,
+            totalChaptersReadCount = totalChaptersCount,
             unlockedBadges = currentBadges,
             lastActiveDate = if (stats.lastActiveDate.isEmpty()) todayStr else stats.lastActiveDate
         )

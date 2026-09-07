@@ -101,11 +101,33 @@ object NovelThemes {
                 bg = Color(0xFFFAFAFA),
                 surface = Color(0xFFFFFFFF),
                 surfaceGlass = Color(0xF0FFFFFF),
-                border = Color(0x1F000000),
-                text = Color(0xFF1A1A1A),
-                textMuted = Color(0xFF666666),
-                primary = Color(0xFF1A73E8),
-                accent = Color(0xFF1A73E8),
+                border = Color(0x1F1E293B),
+                text = Color(0xFF1E293B),
+                textMuted = Color(0xFF64748B),
+                primary = Color(0xFF2563EB),
+                accent = Color(0xFF2563EB),
+                isDark = false
+            )
+            SystemTheme.SOOTHING_MINT -> SystemThemeColors(
+                bg = Color(0xFFEBF3EC),
+                surface = Color(0xFFDEEADC),
+                surfaceGlass = Color(0xF0DEEADC),
+                border = Color(0x3310B981),
+                text = Color(0xFF153E26),
+                textMuted = Color(0xFF2D6A4F),
+                primary = Color(0xFF10B981),
+                accent = Color(0xFF10B981),
+                isDark = false
+            )
+            SystemTheme.WARM_SAND -> SystemThemeColors(
+                bg = Color(0xFFFBF6EE),
+                surface = Color(0xFFF0E5D5),
+                surfaceGlass = Color(0xF0F0E5D5),
+                border = Color(0x33D97706),
+                text = Color(0xFF372A1F),
+                textMuted = Color(0xFF785A3C),
+                primary = Color(0xFFD97706),
+                accent = Color(0xFFD97706),
                 isDark = false
             )
             SystemTheme.CYBER_PURPLE_NEON -> SystemThemeColors(
@@ -152,17 +174,6 @@ object NovelThemes {
                 accent = Color(0xFFE11D48),
                 isDark = true
             )
-            SystemTheme.WARM_SAND -> SystemThemeColors(
-                bg = Color(0xFFF6EFE0),
-                surface = Color(0xFFEFE6D1),
-                surfaceGlass = Color(0xF0EFE6D1),
-                border = Color(0x24785A3C),
-                text = Color(0xFF2E2012),
-                textMuted = Color(0xFF6B5842),
-                primary = Color(0xFF8B4D1B),
-                accent = Color(0xFFA86326),
-                isDark = false
-            )
             SystemTheme.NORDIC_CLEAN -> SystemThemeColors(
                 bg = Color(0xFFEEF2F7),
                 surface = Color(0xFFFFFFFF),
@@ -179,6 +190,46 @@ object NovelThemes {
 
     fun getReaderColors(theme: ReaderCanvasTheme): ReaderCanvasColors {
         return when (theme) {
+            ReaderCanvasTheme.SEPIA_PAPER -> ReaderCanvasColors(
+                bg = Color(0xFFF5EFEB),
+                surface = Color(0xFFEAE2DA),
+                title = Color(0xFF2B1D0C),
+                text = Color(0xFF2B1D0C),
+                textSecondary = Color(0xFF7D6556),
+                badgeBg = Color(0x2B8D6E63),
+                badgeText = Color(0xFF8D6E63),
+                isDark = false
+            )
+            ReaderCanvasTheme.PURE_LIGHT -> ReaderCanvasColors(
+                bg = Color(0xFFFAFAFA),
+                surface = Color(0xFFFFFFFF),
+                title = Color(0xFF1E293B),
+                text = Color(0xFF1E293B),
+                textSecondary = Color(0xFF64748B),
+                badgeBg = Color(0x1F2563EB),
+                badgeText = Color(0xFF2563EB),
+                isDark = false
+            )
+            ReaderCanvasTheme.SOOTHING_MINT, ReaderCanvasTheme.MINT_FRESH -> ReaderCanvasColors(
+                bg = Color(0xFFEBF3EC),
+                surface = Color(0xFFDEEADC),
+                title = Color(0xFF153E26),
+                text = Color(0xFF153E26),
+                textSecondary = Color(0xFF2D6A4F),
+                badgeBg = Color(0x2610B981),
+                badgeText = Color(0xFF10B981),
+                isDark = false
+            )
+            ReaderCanvasTheme.WARM_SAND -> ReaderCanvasColors(
+                bg = Color(0xFFFBF6EE),
+                surface = Color(0xFFF0E5D5),
+                title = Color(0xFF372A1F),
+                text = Color(0xFF372A1F),
+                textSecondary = Color(0xFF6C5340),
+                badgeBg = Color(0x26D97706),
+                badgeText = Color(0xFFD97706),
+                isDark = false
+            )
             ReaderCanvasTheme.CHARCOAL -> ReaderCanvasColors(
                 bg = Color(0xFF121922),
                 surface = Color(0xFF1A232E),
@@ -209,26 +260,6 @@ object NovelThemes {
                 badgeText = Color(0xFF38BDF8),
                 isDark = true
             )
-            ReaderCanvasTheme.SEPIA_PAPER -> ReaderCanvasColors(
-                bg = Color(0xFFF5EFEB),
-                surface = Color(0xFFEAE2DA),
-                title = Color(0xFF2B1D0C),
-                text = Color(0xFF2B1D0C),
-                textSecondary = Color(0xFF7D6556),
-                badgeBg = Color(0x228D6E63),
-                badgeText = Color(0xFF8D6E63),
-                isDark = false
-            )
-            ReaderCanvasTheme.PURE_LIGHT -> ReaderCanvasColors(
-                bg = Color(0xFFFAFAFA),
-                surface = Color(0xFFFFFFFF),
-                title = Color(0xFF1A1A1A),
-                text = Color(0xFF1A1A1A),
-                textSecondary = Color(0xFF666666),
-                badgeBg = Color(0x1F1A73E8),
-                badgeText = Color(0xFF1A73E8),
-                isDark = false
-            )
             ReaderCanvasTheme.PARCHMENT -> ReaderCanvasColors(
                 bg = Color(0xFFF5EEDB),
                 surface = Color(0xFFE9DEC3),
@@ -247,16 +278,6 @@ object NovelThemes {
                 textSecondary = Color(0xFF475569),
                 badgeBg = Color(0x1A0284C7),
                 badgeText = Color(0xFF0284C7),
-                isDark = false
-            )
-            ReaderCanvasTheme.MINT_FRESH -> ReaderCanvasColors(
-                bg = Color(0xFFEAF5F0),
-                surface = Color(0xFFD8ECE2),
-                title = Color(0xFF134E4A),
-                text = Color(0xFF062B28),
-                textSecondary = Color(0xFF1F655F),
-                badgeBg = Color(0x1F134E4A),
-                badgeText = Color(0xFF134E4A),
                 isDark = false
             )
         }

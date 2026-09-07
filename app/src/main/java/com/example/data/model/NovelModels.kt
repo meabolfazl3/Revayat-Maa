@@ -25,23 +25,26 @@ enum class SystemTheme(
     TELEGRAM_DARK("telegram-dark", "تاریک مدرن", 0, true),
     AMOLED_BLACK("amoled-black", "اولد مشکی", 0, true),
     TELEGRAM_DAY("telegram-day", "روشن روز", 0, false),
-    CYBER_NEON("cyber-neon", "سایبر نئون", 0, true),
     SEPIA_PAPER("sepia-paper", "کاغذ کاهی کلاسیک", 0, false),
-    PURE_LIGHT("pure-light", "صبح مینیمال", 0, false),
+    CYBER_NEON("cyber-neon", "سایبر نئون", 0, true),
+    NORDIC_CLEAN("nordic-clean", "نوردیک", 0, false),
     CYBER_PURPLE_NEON("cyber-purple-neon", "نئون بنفش", 2, true),
+    PURE_LIGHT("pure-light", "صبح مینیمال", 4, false),
     IMPERIAL_JADE("imperial-jade", "یشمی کهکشانی", 5, true),
+    SOOTHING_MINT("soothing-mint", "سبز پاستلی", 6, false),
+    WARM_SAND("warm-sand", "شنی مخملی", 8, false),
     NORDIC_AURORA("nordic-aurora", "شفق قطبی", 8, true),
-    ROYAL_CRIMSON("royal-crimson", "مخمل شوالیه‌ای", 12, true),
-    WARM_SAND("warm-sand", "کویر / شن", 0, false),
-    NORDIC_CLEAN("nordic-clean", "نوردیک", 0, false)
+    ROYAL_CRIMSON("royal-crimson", "مخمل شوالیه‌ای", 12, true)
 }
 
 enum class ReaderCanvasTheme(val id: String, val titleFa: String) {
+    SEPIA_PAPER("sepia-paper", "کاغذ کاهی کلاسیک"),
+    PURE_LIGHT("pure-light", "صبح مینیمال"),
+    SOOTHING_MINT("soothing-mint", "سبز پاستلی"),
+    WARM_SAND("warm-sand", "شنی مخملی"),
     CHARCOAL("charcoal", "زغالی"),
     AMOLED("amoled", "AMOLED"),
     MIDNIGHT_SLATE("midnight-slate", "شب اسلیت"),
-    SEPIA_PAPER("sepia-paper", "کاغذ کاهی"),
-    PURE_LIGHT("pure-light", "صبح مینیمال"),
     PARCHMENT("parchment", "کاغذ کهن"),
     SOFT_MILK("soft-milk", "شیرین لایت"),
     MINT_FRESH("mint-fresh", "نعنایی ملایم")
