@@ -78,7 +78,7 @@ fun QuotePosterDialog(
     onDismiss: () -> Unit,
     onShowToast: (String) -> Unit
 ) {
-    var selectedTemplate by remember { mutableStateOf(PosterTemplate.STORY_9_16) }
+    var selectedTemplate by remember { mutableStateOf(PosterTemplate.CYBER_GLASS) }
     val context = LocalContext.current
 
     Dialog(
@@ -201,15 +201,16 @@ fun QuotePosterDialog(
                     // Action Buttons - Save & Share
                     Button(
                         onClick = {
-                            val success = PosterImageGenerator.generateAndSaveStoryCard(
+                            val success = PosterImageGenerator.generateAndSavePoster(
                                 context = context,
+                                template = selectedTemplate,
                                 quoteText = quoteText,
                                 chapterTitle = chapterTitle
                             )
                             if (success) {
-                                onShowToast("✅ کارت استوری با کیفیت عالی در گالری ذخیره شد")
+                                onShowToast("✅ کارت پوستر با کیفیت عالی در گالری ذخیره شد")
                             } else {
-                                onShowToast("خطا در ذخیره تصویر استوری")
+                                onShowToast("خطا در ذخیره تصویر پوستر")
                             }
                         },
                         modifier = Modifier
@@ -221,7 +222,7 @@ fun QuotePosterDialog(
                     ) {
                         Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("ذخیره کارت استوری (PNG آفلاین)", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("ذخیره کارت پوستر (PNG آفلاین)", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
@@ -264,106 +265,10 @@ fun PosterCardRender(
     chapterTitle: String
 ) {
     when (template) {
-        PosterTemplate.STORY_9_16 -> Story916TemplateCard(quoteText, chapterTitle)
-        PosterTemplate.TICKET -> TicketTemplateCard(quoteText, chapterTitle)
         PosterTemplate.CYBER_GLASS -> CyberGlassTemplateCard(quoteText, chapterTitle)
+        PosterTemplate.TICKET -> TicketTemplateCard(quoteText, chapterTitle)
         PosterTemplate.IMPERIAL_GOLD -> ImperialGoldTemplateCard(quoteText, chapterTitle)
         PosterTemplate.DARK_EDITORIAL -> DarkEditorialTemplateCard(quoteText, chapterTitle)
-    }
-}
-
-@Composable
-private fun Story916TemplateCard(quoteText: String, chapterTitle: String) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(4.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF0D1420)),
-        border = androidx.compose.foundation.BorderStroke(1.5.dp, Color(0x5538BDF8))
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    androidx.compose.ui.graphics.Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF0F172A),
-                            Color(0xFF0A0F1D)
-                        )
-                    )
-                )
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Surface(
-                color = Color(0xFF38BDF8).copy(alpha = 0.15f),
-                shape = RoundedCornerShape(50.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF38BDF8).copy(alpha = 0.4f))
-            ) {
-                Text(
-                    text = "✦ داستان‌خوان روایت ما ✦",
-                    color = Color(0xFF38BDF8),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                )
-            }
-
-            Text(
-                text = "«رمان راز الماس»",
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.ExtraBold
-            )
-
-            Text(
-                text = chapterTitle,
-                color = Color(0xFF94A3B8),
-                fontSize = 12.sp
-            )
-
-            HorizontalDivider(color = Color(0x33FFFFFF), thickness = 1.dp)
-
-            Text(
-                text = "❞",
-                color = Color(0x5538BDF8),
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Text(
-                text = "«$quoteText»",
-                color = Color(0xFFF1F5F9),
-                fontSize = 14.sp,
-                lineHeight = 24.sp,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(horizontal = 8.dp)
-            )
-
-            HorizontalDivider(color = Color(0x22FFFFFF), thickness = 1.dp)
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "نویسنده: ابوالفضل پورنجف",
-                    color = Color(0xFFCBD5E1),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = "روایت ما",
-                    color = Color(0xFF38BDF8),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
     }
 }
 

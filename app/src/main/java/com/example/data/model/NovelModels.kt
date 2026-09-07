@@ -61,9 +61,8 @@ enum class PersianFont(val fontName: String, val titleFa: String) {
 }
 
 enum class PosterTemplate(val id: String, val titleFa: String) {
-    STORY_9_16("story-9-16", "استوری اینستاگرام (۹:۱۶)"),
-    TICKET("ticket", "تیکت داستانی"),
     CYBER_GLASS("cyber-glass", "نئون گلس"),
+    TICKET("ticket", "تیکت داستانی"),
     IMPERIAL_GOLD("imperial-gold", "کهن‌نامه زرین"),
     DARK_EDITORIAL("dark-editorial", "مینیمال ژورنال")
 }

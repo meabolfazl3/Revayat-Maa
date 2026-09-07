@@ -26,7 +26,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Lock
@@ -162,7 +162,7 @@ fun HallOfFameDialog(
                                     modifier = Modifier.fillMaxSize()
                                 ) {
                                     Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                         contentDescription = "بازگشت",
                                         tint = sysColors.text,
                                         modifier = Modifier.size(20.dp)
@@ -294,217 +294,169 @@ fun HallOfFameDialog(
                             val badgeColor = Color(badge.accentColorHex)
 
                             Card(
-                                shape = RoundedCornerShape(22.dp),
+                                shape = RoundedCornerShape(18.dp),
                                 colors = CardDefaults.cardColors(
                                     containerColor = if (isUnlocked) {
-                                        sysColors.surface.copy(alpha = if (sysColors.isDark) 0.95f else 0.88f)
+                                        sysColors.surface.copy(alpha = if (sysColors.isDark) 0.95f else 0.95f)
                                     } else {
-                                        sysColors.surface.copy(alpha = if (sysColors.isDark) 0.50f else 0.60f)
+                                        sysColors.surface.copy(alpha = if (sysColors.isDark) 0.55f else 0.70f)
                                     }
                                 ),
                                 border = BorderStroke(
                                     width = if (isUnlocked) 1.5.dp else 1.dp,
                                     color = if (isUnlocked) badgeColor.copy(alpha = glowAlpha) else sysColors.border.copy(alpha = 0.6f)
                                 ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = if (isUnlocked) 4.dp else 1.dp),
+                                elevation = CardDefaults.cardElevation(defaultElevation = if (isUnlocked) 3.dp else 1.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .testTag("badge_card_${badge.id}")
                             ) {
-                                // Outer container with ambient diffused halo
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clip(RoundedCornerShape(22.dp))
+                                        .clip(RoundedCornerShape(18.dp))
                                         .background(
                                             if (isUnlocked) {
                                                 Brush.radialGradient(
                                                     colors = listOf(
-                                                        badgeColor.copy(alpha = if (sysColors.isDark) 0.22f else 0.12f),
+                                                        badgeColor.copy(alpha = if (sysColors.isDark) 0.18f else 0.08f),
                                                         Color.Transparent
                                                     )
                                                 )
                                             } else {
                                                 Brush.radialGradient(
                                                     colors = listOf(
-                                                        (if (sysColors.isDark) Color.White else sysColors.primary).copy(alpha = 0.04f),
+                                                        (if (sysColors.isDark) Color.White else sysColors.border).copy(alpha = 0.03f),
                                                         Color.Transparent
                                                     )
                                                 )
                                             }
                                         )
-                                        .padding(8.dp)
+                                        .padding(16.dp)
                                 ) {
-                                    // Inner Card Frame with smooth rounded corners and blurred/faded outline
-                                    Surface(
-                                        shape = RoundedCornerShape(16.dp),
-                                        color = if (isUnlocked) {
-                                            if (sysColors.isDark) sysColors.surface.copy(alpha = 0.85f) else sysColors.surface.copy(alpha = 0.92f)
-                                        } else {
-                                            if (sysColors.isDark) sysColors.surfaceGlass.copy(alpha = 0.45f) else sysColors.surface.copy(alpha = 0.80f)
-                                        },
-                                        border = BorderStroke(
-                                            width = 1.dp,
-                                            color = if (isUnlocked) {
-                                                badgeColor.copy(alpha = 0.35f)
-                                            } else {
-                                                sysColors.border.copy(alpha = if (sysColors.isDark) 0.35f else 0.45f)
-                                            }
-                                        ),
-                                        shadowElevation = if (isUnlocked) 2.dp else 1.dp,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clip(RoundedCornerShape(16.dp))
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(10.dp)
                                     ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .background(
-                                                    if (isUnlocked) {
-                                                        Brush.verticalGradient(
-                                                            colors = listOf(
-                                                                badgeColor.copy(alpha = if (sysColors.isDark) 0.16f else 0.09f),
-                                                                Color.Transparent,
-                                                                badgeColor.copy(alpha = if (sysColors.isDark) 0.08f else 0.04f)
-                                                            )
-                                                        )
-                                                    } else {
-                                                        Brush.verticalGradient(
-                                                            colors = listOf(
-                                                                (if (sysColors.isDark) Color.White else sysColors.border).copy(alpha = if (sysColors.isDark) 0.05f else 0.08f),
-                                                                Color.Transparent,
-                                                                (if (sysColors.isDark) Color.Black else sysColors.border).copy(alpha = if (sysColors.isDark) 0.12f else 0.06f)
-                                                            )
-                                                        )
-                                                    }
-                                                )
-                                                .padding(horizontal = 10.dp, vertical = 12.dp)
+                                        // Status Pill (Top)
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.End
                                         ) {
-                                            Column(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalAlignment = Alignment.CenterHorizontally,
-                                                verticalArrangement = Arrangement.spacedBy(10.dp)
-                                            ) {
-                                                // Status Pill (Top)
-                                                Row(
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    horizontalArrangement = Arrangement.End
+                                            if (isUnlocked) {
+                                                Surface(
+                                                    shape = RoundedCornerShape(50.dp),
+                                                    color = badgeColor.copy(alpha = 0.18f),
+                                                    border = BorderStroke(1.dp, badgeColor.copy(alpha = 0.5f))
                                                 ) {
-                                                    if (isUnlocked) {
-                                                        Surface(
-                                                            shape = RoundedCornerShape(50.dp),
-                                                            color = badgeColor.copy(alpha = 0.18f),
-                                                            border = BorderStroke(1.dp, badgeColor.copy(alpha = 0.5f))
-                                                        ) {
-                                                            Row(
-                                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                                                verticalAlignment = Alignment.CenterVertically,
-                                                                horizontalArrangement = Arrangement.spacedBy(3.dp)
-                                                            ) {
-                                                                Icon(
-                                                                    imageVector = Icons.Default.Check,
-                                                                    contentDescription = null,
-                                                                    tint = badgeColor,
-                                                                    modifier = Modifier.size(11.dp)
-                                                                )
-                                                                Text(
-                                                                    text = "کسب شده",
-                                                                    fontSize = 10.sp,
-                                                                    fontWeight = FontWeight.Bold,
-                                                                    color = badgeColor
-                                                                )
-                                                            }
-                                                        }
-                                                    } else {
-                                                        Surface(
-                                                            shape = RoundedCornerShape(50.dp),
-                                                            color = if (sysColors.isDark) Color.Black.copy(alpha = 0.25f) else sysColors.textMuted.copy(alpha = 0.12f),
-                                                            border = BorderStroke(1.dp, sysColors.border.copy(alpha = 0.5f))
-                                                        ) {
-                                                            Row(
-                                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                                                verticalAlignment = Alignment.CenterVertically,
-                                                                horizontalArrangement = Arrangement.spacedBy(3.dp)
-                                                            ) {
-                                                                Icon(
-                                                                    imageVector = Icons.Default.Lock,
-                                                                    contentDescription = null,
-                                                                    tint = sysColors.textMuted,
-                                                                    modifier = Modifier.size(11.dp)
-                                                                )
-                                                                Text(
-                                                                    text = "قفل",
-                                                                    fontSize = 10.sp,
-                                                                    fontWeight = FontWeight.Normal,
-                                                                    color = sysColors.textMuted
-                                                                )
-                                                            }
-                                                        }
-                                                    }
-                                                }
-
-                                                // Badge Icon Center
-                                                Box(
-                                                    contentAlignment = Alignment.Center,
-                                                    modifier = Modifier.size(56.dp)
-                                                ) {
-                                                    if (isUnlocked) {
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .size(56.dp)
-                                                                .clip(CircleShape)
-                                                                .background(
-                                                                    Brush.radialGradient(
-                                                                        colors = listOf(
-                                                                            badgeColor.copy(alpha = 0.4f),
-                                                                            Color.Transparent
-                                                                        )
-                                                                    )
-                                                                )
+                                                    Row(
+                                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Check,
+                                                            contentDescription = null,
+                                                            tint = badgeColor,
+                                                            modifier = Modifier.size(11.dp)
+                                                        )
+                                                        Text(
+                                                            text = "کسب شده",
+                                                            fontSize = 10.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = badgeColor
                                                         )
                                                     }
-
-                                                    Surface(
-                                                        shape = CircleShape,
-                                                        color = if (isUnlocked) badgeColor.copy(alpha = 0.15f) else (if (sysColors.isDark) Color.White.copy(alpha = 0.05f) else sysColors.bg.copy(alpha = 0.7f)),
-                                                        border = BorderStroke(
-                                                            1.5.dp,
-                                                            if (isUnlocked) badgeColor else sysColors.border.copy(alpha = 0.6f)
-                                                        ),
-                                                        modifier = Modifier.size(50.dp)
+                                                }
+                                            } else {
+                                                Surface(
+                                                    shape = RoundedCornerShape(50.dp),
+                                                    color = if (sysColors.isDark) Color.Black.copy(alpha = 0.25f) else sysColors.textMuted.copy(alpha = 0.12f),
+                                                    border = BorderStroke(1.dp, sysColors.border.copy(alpha = 0.5f))
+                                                ) {
+                                                    Row(
+                                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.spacedBy(3.dp)
                                                     ) {
-                                                        Box(
-                                                            contentAlignment = Alignment.Center,
-                                                            modifier = Modifier.fillMaxSize()
-                                                        ) {
-                                                            Text(
-                                                                text = if (isUnlocked) badge.iconEmoji else "🔒",
-                                                                fontSize = 24.sp
-                                                            )
-                                                        }
+                                                        Icon(
+                                                            imageVector = Icons.Default.Lock,
+                                                            contentDescription = null,
+                                                            tint = sysColors.textMuted,
+                                                            modifier = Modifier.size(11.dp)
+                                                        )
+                                                        Text(
+                                                            text = "قفل",
+                                                            fontSize = 10.sp,
+                                                            fontWeight = FontWeight.Normal,
+                                                            color = sysColors.textMuted
+                                                        )
                                                     }
                                                 }
-
-                                                // Title
-                                                Text(
-                                                    text = badge.title,
-                                                    fontWeight = FontWeight.ExtraBold,
-                                                    fontSize = 13.sp,
-                                                    color = if (isUnlocked) sysColors.text else sysColors.textMuted,
-                                                    textAlign = TextAlign.Center
-                                                )
-
-                                                // Description
-                                                Text(
-                                                    text = badge.description,
-                                                    fontSize = 11.sp,
-                                                    lineHeight = 16.sp,
-                                                    color = sysColors.textMuted,
-                                                    textAlign = TextAlign.Center,
-                                                    modifier = Modifier.height(44.dp)
-                                                )
                                             }
                                         }
+
+                                        // Badge Icon Center
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier.size(56.dp)
+                                        ) {
+                                            if (isUnlocked) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(56.dp)
+                                                        .clip(CircleShape)
+                                                        .background(
+                                                            Brush.radialGradient(
+                                                                colors = listOf(
+                                                                    badgeColor.copy(alpha = 0.4f),
+                                                                    Color.Transparent
+                                                                )
+                                                            )
+                                                        )
+                                                )
+                                            }
+
+                                            Surface(
+                                                shape = CircleShape,
+                                                color = if (isUnlocked) badgeColor.copy(alpha = 0.15f) else (if (sysColors.isDark) Color.White.copy(alpha = 0.05f) else sysColors.bg.copy(alpha = 0.7f)),
+                                                border = BorderStroke(
+                                                    1.5.dp,
+                                                    if (isUnlocked) badgeColor else sysColors.border.copy(alpha = 0.6f)
+                                                ),
+                                                modifier = Modifier.size(50.dp)
+                                            ) {
+                                                Box(
+                                                    contentAlignment = Alignment.Center,
+                                                    modifier = Modifier.fillMaxSize()
+                                                ) {
+                                                    Text(
+                                                        text = if (isUnlocked) badge.iconEmoji else "🔒",
+                                                        fontSize = 24.sp
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        // Title
+                                        Text(
+                                            text = badge.title,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            fontSize = 13.5.sp,
+                                            color = if (isUnlocked) sysColors.text else sysColors.textMuted,
+                                            textAlign = TextAlign.Center
+                                        )
+
+                                        // Description
+                                        Text(
+                                            text = badge.description,
+                                            fontSize = 11.5.sp,
+                                            lineHeight = 17.sp,
+                                            color = sysColors.textMuted,
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.height(44.dp)
+                                        )
                                     }
                                 }
                             }

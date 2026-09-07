@@ -588,7 +588,7 @@ fun ReaderScreen(viewModel: ReaderViewModel) {
                         }
                     }
 
-                    // Live Toast Notification
+                    // Live Toast Notification / Floating Achievement Unlock Banner
                     AnimatedVisibility(
                         visible = uiState.toastMessage != null,
                         enter = fadeIn() + slideInVertically { -it },
@@ -598,22 +598,62 @@ fun ReaderScreen(viewModel: ReaderViewModel) {
                             .padding(top = 20.dp)
                     ) {
                         uiState.toastMessage?.let { msg ->
+                            val isDark = sysColors.isDark
+                            val bannerBg = if (isDark) Color(0xFF1E293B).copy(alpha = 0.96f) else Color(0xFFFFFFFF).copy(alpha = 0.98f)
+                            val bannerBorder = if (isDark) Color(0xFF334155) else Color(0xFFCBD5E1)
+                            val titleColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
+                            val subtitleColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF475569)
+
                             Surface(
-                                color = sysColors.surface.copy(alpha = 0.95f),
-                                shape = RoundedCornerShape(30.dp),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, sysColors.border),
+                                color = bannerBg,
+                                shape = RoundedCornerShape(26.dp),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, bannerBorder),
                                 shadowElevation = 12.dp
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = msg,
-                                        color = Color.White,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                                val isBadgeUnlock = msg.contains("نشان") || msg.contains("بازگشایی") || msg.contains("🏆")
+                                if (isBadgeUnlock) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = Color(0xFFF59E0B).copy(alpha = if (isDark) 0.25f else 0.15f),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF59E0B).copy(alpha = 0.4f)),
+                                            modifier = Modifier.size(34.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Text("🏆", fontSize = 16.sp)
+                                            }
+                                        }
+                                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                            Text(
+                                                text = "بازگشایی دستاورد جدید",
+                                                color = titleColor,
+                                                fontSize = 12.5.sp,
+                                                fontWeight = FontWeight.ExtraBold
+                                            )
+                                            Text(
+                                                text = msg.replace("🏆 ", ""),
+                                                color = subtitleColor,
+                                                fontSize = 11.5.sp,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = msg,
+                                            color = titleColor,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
                                 }
                             }
                         }

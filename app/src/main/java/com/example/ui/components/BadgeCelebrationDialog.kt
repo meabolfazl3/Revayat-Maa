@@ -225,7 +225,7 @@ fun BadgeCelebrationDialog(
                                 text = badge.title,
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = sysColors.text,
+                                color = if (sysColors.isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A),
                                 textAlign = TextAlign.Center
                             )
 
@@ -233,7 +233,7 @@ fun BadgeCelebrationDialog(
                             Text(
                                 text = badge.description,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = sysColors.textMuted,
+                                color = if (sysColors.isDark) Color(0xFF94A3B8) else Color(0xFF475569),
                                 textAlign = TextAlign.Center,
                                 lineHeight = 22.sp,
                                 modifier = Modifier.padding(horizontal = 12.dp)

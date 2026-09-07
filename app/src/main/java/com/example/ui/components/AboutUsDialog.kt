@@ -91,7 +91,7 @@ fun AboutUsDialog(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "نسخه ۳.۳",
+                                text = "نسخه ۳.۴",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.primary
