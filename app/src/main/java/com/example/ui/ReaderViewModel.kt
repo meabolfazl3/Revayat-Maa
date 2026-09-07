@@ -47,6 +47,10 @@ data class ReaderUiState(
     val showUnlockSuccessPopup: Boolean = false,
     val isAllUnlocked: Boolean = false,
     val searchDrawerQuery: String = "",
+    val readingStats: com.example.data.model.ReadingStatsData = com.example.data.model.ReadingStatsData(),
+    val showHallOfFameDialog: Boolean = false,
+    val showReadingStatsDialog: Boolean = false,
+    val newlyUnlockedBadge: com.example.data.model.BadgeType? = null,
     val toastMessage: String? = null
 )
 
@@ -94,6 +98,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         val settings = repository.getSettings()
         val bookmarks = repository.getBookmarks()
         val isAllUnlocked = repository.isAllChaptersUnlocked()
+        val stats = repository.getReadingStats()
 
         _uiState.update {
             it.copy(
@@ -102,7 +107,8 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                 currentChapterIndex = savedIndex,
                 settings = settings,
                 bookmarks = bookmarks,
-                isAllUnlocked = isAllUnlocked
+                isAllUnlocked = isAllUnlocked,
+                readingStats = stats
             )
         }
     }
@@ -362,6 +368,50 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setUnlockSuccessPopupVisible(visible: Boolean) {
         _uiState.update { it.copy(showUnlockSuccessPopup = visible) }
+    }
+
+    fun setHallOfFameDialogVisible(visible: Boolean) {
+        val stats = repository.getReadingStats()
+        _uiState.update { it.copy(showHallOfFameDialog = visible, readingStats = stats) }
+    }
+
+    fun setReadingStatsDialogVisible(visible: Boolean) {
+        val stats = repository.getReadingStats()
+        _uiState.update { it.copy(showReadingStatsDialog = visible, readingStats = stats) }
+    }
+
+    fun recordReadingSeconds(seconds: Long) {
+        val newlyUnlocked = repository.recordReadingSeconds(seconds)
+        val updatedStats = repository.getReadingStats()
+        _uiState.update {
+            it.copy(
+                readingStats = updatedStats,
+                newlyUnlockedBadge = newlyUnlocked.firstOrNull() ?: it.newlyUnlockedBadge
+            )
+        }
+        if (newlyUnlocked.isNotEmpty()) {
+            val badge = newlyUnlocked.first()
+            showToast("🏆 تبریک! نشان «${badge.title}» بازگشایی شد!")
+        }
+    }
+
+    fun recordChapterFinished(chapterId: Int) {
+        val newlyUnlocked = repository.recordChapterFinished(chapterId)
+        val updatedStats = repository.getReadingStats()
+        _uiState.update {
+            it.copy(
+                readingStats = updatedStats,
+                newlyUnlockedBadge = newlyUnlocked.firstOrNull() ?: it.newlyUnlockedBadge
+            )
+        }
+        if (newlyUnlocked.isNotEmpty()) {
+            val badge = newlyUnlocked.first()
+            showToast("🏆 تبریک! نشان «${badge.title}» بازگشایی شد!")
+        }
+    }
+
+    fun dismissBadgeCelebration() {
+        _uiState.update { it.copy(newlyUnlockedBadge = null) }
     }
 
     fun submitUnlockCode(rawCode: String): Boolean {

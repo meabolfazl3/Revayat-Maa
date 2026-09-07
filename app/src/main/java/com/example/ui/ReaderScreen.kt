@@ -95,6 +95,7 @@ import com.example.data.NovelRepository
 import com.example.data.model.Chapter
 import com.example.data.model.ReadingMode
 import com.example.ui.components.AppLogo
+import com.example.ui.components.BadgeCelebrationDialog
 import com.example.ui.components.BookmarksDialog
 import com.example.ui.components.PatchImportDialog
 import com.example.ui.components.QuotePosterDialog
@@ -249,6 +250,31 @@ fun ReaderScreen(viewModel: ReaderViewModel) {
         }
     }
 
+    // Active reading timer: tracks seconds while reader is on screen
+    LaunchedEffect(currentChapter.id) {
+        while (isActive) {
+            delay(10_000L) // every 10 seconds
+            viewModel.recordReadingSeconds(10L)
+        }
+    }
+
+    // Auto-record chapter finished when reading progress reaches 95%
+    LaunchedEffect(readingPercent, currentChapter.id) {
+        if (readingPercent >= 95) {
+            viewModel.recordChapterFinished(currentChapter.id)
+        }
+    }
+
+    // Word count & estimated reading time calculation (Words / 200)
+    val chapterWordCount = remember(currentChapter.id, currentChapter.content) {
+        currentChapter.content.sumOf { p ->
+            p.trim().split("\\s+".toRegex()).count { it.isNotBlank() }
+        }
+    }
+    val estimatedReadMinutes = remember(chapterWordCount) {
+        (chapterWordCount / 200).coerceAtLeast(1)
+    }
+
     // Step-by-step Back Button Handling (closes open drawers/popups/dialogs or returns to Home)
     BackHandler {
         when {
@@ -269,6 +295,9 @@ fun ReaderScreen(viewModel: ReaderViewModel) {
             }
             uiState.showBookmarksDialog -> {
                 viewModel.setBookmarksDialogVisible(false)
+            }
+            uiState.newlyUnlockedBadge != null -> {
+                viewModel.dismissBadgeCelebration()
             }
             uiState.isFocusMode -> {
                 viewModel.toggleFocusMode()
@@ -446,7 +475,30 @@ fun ReaderScreen(viewModel: ReaderViewModel) {
                                 modifier = Modifier.testTag("chapter_main_title")
                             )
 
-                            Spacer(modifier = Modifier.height(18.dp))
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            // Time-to-Read Capsule Badge
+                            Surface(
+                                shape = RoundedCornerShape(50.dp),
+                                color = readerColors.badgeBg,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, readerColors.badgeText.copy(alpha = 0.35f)),
+                                modifier = Modifier.testTag("time_to_read_badge")
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = "⏱️ زمان تقریبی مطالعه: ${persianNumber(estimatedReadMinutes)} دقیقه (${persianNumber(chapterWordCount)} کلمه)",
+                                        fontSize = 11.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = readerColors.badgeText
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
                             HorizontalDivider(
                                 color = sysColors.border,
                                 thickness = 1.dp,
@@ -636,6 +688,29 @@ fun ReaderScreen(viewModel: ReaderViewModel) {
                                                 textAlign = TextAlign.Center,
                                                 modifier = Modifier.testTag("chapter_main_title_paged")
                                             )
+
+                                            Spacer(modifier = Modifier.height(8.dp))
+
+                                            // Time-to-Read Capsule Badge in Page Flip Mode
+                                            Surface(
+                                                shape = RoundedCornerShape(50.dp),
+                                                color = readerColors.badgeBg,
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, readerColors.badgeText.copy(alpha = 0.35f)),
+                                                modifier = Modifier.testTag("paged_time_to_read_badge")
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "⏱️ زمان مطالعه: ${persianNumber(estimatedReadMinutes)} دقیقه",
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = readerColors.badgeText
+                                                    )
+                                                }
+                                            }
 
                                             Spacer(modifier = Modifier.height(10.dp))
                                             HorizontalDivider(
@@ -949,8 +1024,18 @@ fun ReaderScreen(viewModel: ReaderViewModel) {
             SystemSettingsDialog(
                 currentSettings = uiState.settings,
                 sysColors = sysColors,
+                unlockedBadgesCount = uiState.readingStats.unlockedBadges.size,
                 onSettingsChanged = viewModel::updateSettings,
+                onShowToast = viewModel::showToast,
                 onDismiss = { viewModel.setSystemSettingsDialogVisible(false) }
+            )
+        }
+
+        uiState.newlyUnlockedBadge?.let { badge ->
+            BadgeCelebrationDialog(
+                badge = badge,
+                sysColors = sysColors,
+                onDismiss = { viewModel.dismissBadgeCelebration() }
             )
         }
 

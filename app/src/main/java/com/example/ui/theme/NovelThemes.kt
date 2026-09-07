@@ -64,6 +64,17 @@ object NovelThemes {
                 accent = Color(0xFF60A5FA),
                 isDark = true
             )
+            SystemTheme.CYBER_PURPLE_NEON -> SystemThemeColors(
+                bg = Color(0xFF0B0418),
+                surface = Color(0xFF17092F),
+                surfaceGlass = Color(0xE617092F),
+                border = Color(0x55C084FC),
+                text = Color(0xFFFAF5FF),
+                textMuted = Color(0xFFC084FC),
+                primary = Color(0xFFA855F7),
+                accent = Color(0xFFE879F9),
+                isDark = true
+            )
             SystemTheme.CYBER_NEON -> SystemThemeColors(
                 bg = Color(0xFF080A12),
                 surface = Color(0xFF101426),

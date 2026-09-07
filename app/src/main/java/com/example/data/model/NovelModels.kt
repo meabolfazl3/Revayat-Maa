@@ -19,6 +19,7 @@ data class Bookmark(
 enum class SystemTheme(val id: String, val titleFa: String) {
     TELEGRAM_DARK("telegram-dark", "تاریک مدرن"),
     AMOLED_BLACK("amoled-black", "اولد مشکی"),
+    CYBER_PURPLE_NEON("cyber-purple-neon", "نئون بنفش سایبرپانک"),
     CYBER_NEON("cyber-neon", "سایبر نئون"),
     TELEGRAM_DAY("telegram-day", "روشن روز"),
     WARM_SAND("warm-sand", "کویر / شن"),
@@ -45,6 +46,7 @@ enum class PersianFont(val fontName: String, val titleFa: String) {
 }
 
 enum class PosterTemplate(val id: String, val titleFa: String) {
+    STORY_9_16("story-9-16", "استوری اینستاگرام (۹:۱۶)"),
     TICKET("ticket", "تیکت داستانی"),
     CYBER_GLASS("cyber-glass", "نئون گلس"),
     IMPERIAL_GOLD("imperial-gold", "کهن‌نامه زرین"),

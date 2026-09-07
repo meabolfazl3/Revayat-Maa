@@ -43,6 +43,7 @@ object PosterImageGenerator {
             val boldTf = getPersianBoldTypeface(context)
             val regTf = getPersianRegularTypeface(context)
             val bitmap = when (template) {
+                PosterTemplate.STORY_9_16 -> createStory916Poster(width, quoteText, chapterTitle, regTf, boldTf)
                 PosterTemplate.TICKET -> createTicketPoster(width, quoteText, chapterTitle, regTf, boldTf)
                 PosterTemplate.CYBER_GLASS -> createCyberPoster(width, quoteText, chapterTitle, regTf, boldTf)
                 PosterTemplate.IMPERIAL_GOLD -> createImperialPoster(width, quoteText, chapterTitle, regTf, boldTf)
@@ -90,6 +91,200 @@ object PosterImageGenerator {
             e.printStackTrace()
             false
         }
+    }
+
+    fun generateAndSaveStoryCard(
+        context: Context,
+        quoteText: String,
+        chapterTitle: String
+    ): Boolean {
+        return try {
+            val width = 1080
+            val boldTf = getPersianBoldTypeface(context)
+            val regTf = getPersianRegularTypeface(context)
+            val bitmap = createStory916Poster(width, quoteText, chapterTitle, regTf, boldTf)
+
+            val fileName = "raze_almas_story_${System.currentTimeMillis()}.png"
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                val contentValues = android.content.ContentValues().apply {
+                    put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                    put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                    put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_PICTURES + "/RevayateMaa")
+                }
+                val uri = context.contentResolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+                if (uri != null) {
+                    context.contentResolver.openOutputStream(uri)?.use { stream ->
+                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+                        stream.flush()
+                    }
+                    true
+                } else {
+                    saveFallbackFile(context, bitmap, fileName)
+                }
+            } else {
+                saveFallbackFile(context, bitmap, fileName)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    private fun saveFallbackFile(context: Context, bitmap: Bitmap, fileName: String): Boolean {
+        return try {
+            val dir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES) ?: context.filesDir
+            val file = File(dir, fileName)
+            FileOutputStream(file).use { stream ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+                stream.flush()
+            }
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun createStory916Poster(w: Int, quote: String, chapter: String, regTf: Typeface, boldTf: Typeface): Bitmap {
+        val h = 1920
+        val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+
+        // 1. Dark Luxury Gradient Background
+        val bgPaint = Paint().apply {
+            shader = LinearGradient(
+                0f, 0f, 0f, h.toFloat(),
+                intArrayOf(0xFF090D16.toInt(), 0xFF111827.toInt(), 0xFF060911.toInt()),
+                floatArrayOf(0f, 0.5f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawRect(0f, 0f, w.toFloat(), h.toFloat(), bgPaint)
+
+        // 2. Ambient Cyan/Violet Glow
+        val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = android.graphics.RadialGradient(
+                w / 2f, h / 2f, w * 0.7f,
+                intArrayOf(0x332EA6FF.toInt(), 0x118B5CF6.toInt(), 0x00000000),
+                floatArrayOf(0f, 0.45f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawCircle(w / 2f, h / 2f, w * 0.7f, glowPaint)
+
+        // 3. Central Glassmorphic Card (9:16 interior)
+        val cardMargin = 50f
+        val cardTop = 130f
+        val cardBottom = h - 130f
+        val cardRect = RectF(cardMargin, cardTop, w - cardMargin, cardBottom)
+        val cornerRadius = 42f
+
+        val cardBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xD9101926.toInt()
+        }
+        canvas.drawRoundRect(cardRect, cornerRadius, cornerRadius, cardBgPaint)
+
+        val cardBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 3f
+            color = 0x4D38BDF8.toInt()
+        }
+        canvas.drawRoundRect(cardRect, cornerRadius, cornerRadius, cardBorderPaint)
+
+        // 4. Header Badge & Novel Branding
+        val appTagPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFF38BDF8.toInt()
+            textSize = 34f
+            typeface = boldTf
+            textAlign = Paint.Align.CENTER
+        }
+        canvas.drawText("✦ داستان‌خوان روایت ما ✦", w / 2f, cardTop + 100f, appTagPaint)
+
+        val titlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFFFFFFFF.toInt()
+            textSize = 62f
+            typeface = boldTf
+            textAlign = Paint.Align.CENTER
+        }
+        canvas.drawText("«رمان ${NovelRepository.NOVEL_TITLE}»", w / 2f, cardTop + 190f, titlePaint)
+
+        val chapterPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFF94A3B8.toInt()
+            textSize = 36f
+            typeface = regTf
+            textAlign = Paint.Align.CENTER
+        }
+        canvas.drawText("برشی ماندگار از: $chapter", w / 2f, cardTop + 255f, chapterPaint)
+
+        // Divider
+        val divPaint = Paint().apply {
+            color = 0x33FFFFFF.toInt()
+            strokeWidth = 2f
+        }
+        canvas.drawLine(cardMargin + 80f, cardTop + 300f, w - cardMargin - 80f, cardTop + 300f, divPaint)
+
+        // Large Decorative Quote Marks
+        val quoteMarkPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0x4D38BDF8.toInt()
+            textSize = 140f
+            typeface = boldTf
+            textAlign = Paint.Align.CENTER
+        }
+        canvas.drawText("❞", w / 2f, cardTop + 430f, quoteMarkPaint)
+
+        // 5. Quote Text in Center
+        val textWidth = (w - (cardMargin * 2) - 140f).toInt()
+        val quoteFontSize = if (quote.length > 250) 38f else if (quote.length > 120) 44f else 50f
+        val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFFF1F5F9.toInt()
+            textSize = quoteFontSize
+            typeface = boldTf
+        }
+
+        val staticLayout = StaticLayout.Builder.obtain(
+            "«$quote»",
+            0,
+            "«$quote»".length,
+            textPaint,
+            textWidth
+        ).setAlignment(Layout.Alignment.ALIGN_CENTER)
+         .setLineSpacing(0f, 1.6f)
+         .build()
+
+        val textTop = cardTop + 500f
+        canvas.save()
+        canvas.translate((w - textWidth) / 2f, textTop)
+        staticLayout.draw(canvas)
+        canvas.restore()
+
+        // 6. Bottom Footer in Card
+        val footerDividerY = cardBottom - 230f
+        canvas.drawLine(cardMargin + 80f, footerDividerY, w - cardMargin - 80f, footerDividerY, divPaint)
+
+        val authorPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFFE2E8F0.toInt()
+            textSize = 34f
+            typeface = boldTf
+            textAlign = Paint.Align.CENTER
+        }
+        canvas.drawText("✍️ نویسنده: ${NovelRepository.NOVEL_AUTHOR}", w / 2f, footerDividerY + 70f, authorPaint)
+
+        val channelPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFF38BDF8.toInt()
+            textSize = 30f
+            typeface = regTf
+            textAlign = Paint.Align.CENTER
+        }
+        canvas.drawText("📢 کانال ایتا: ${NovelRepository.NOVEL_CHANNEL}", w / 2f, footerDividerY + 125f, channelPaint)
+
+        val appNamePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFF64748B.toInt()
+            textSize = 26f
+            typeface = regTf
+            textAlign = Paint.Align.CENTER
+        }
+        canvas.drawText("طراحی شده در اپلیکیشن کتاب‌خوان «روایت ما»", w / 2f, footerDividerY + 175f, appNamePaint)
+
+        return bitmap
     }
 
     private fun createTicketPoster(w: Int, quote: String, chapter: String, regTf: Typeface, boldTf: Typeface): Bitmap {

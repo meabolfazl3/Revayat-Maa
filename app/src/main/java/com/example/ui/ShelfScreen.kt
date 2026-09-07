@@ -75,10 +75,13 @@ import com.example.data.NovelRepository
 import com.example.notification.NovelNotificationHelper
 import com.example.ui.components.AboutUsDialog
 import com.example.ui.components.AppLogo
+import com.example.ui.components.BadgeCelebrationDialog
 import com.example.ui.components.BookCoverArt
 import com.example.ui.components.BookmarksDialog
 import com.example.ui.components.ContactUsDialog
+import com.example.ui.components.HallOfFameDialog
 import com.example.ui.components.PatchImportDialog
+import com.example.ui.components.ReadingStatsDialog
 import com.example.ui.components.SystemSettingsDialog
 import com.example.ui.components.UnlockCodeDialog
 import com.example.ui.components.UnlockSuccessPopup
@@ -109,7 +112,10 @@ fun ShelfScreen(
         uiState.showPatchImportDialog ||
         uiState.showBookmarksDialog ||
         uiState.showUnlockCodeDialog ||
-        uiState.showUnlockSuccessPopup
+        uiState.showUnlockSuccessPopup ||
+        uiState.showHallOfFameDialog ||
+        uiState.showReadingStatsDialog ||
+        uiState.newlyUnlockedBadge != null
 
     BackHandler(enabled = isAnyDialogOrDrawerOpen) {
         when {
@@ -121,6 +127,9 @@ fun ShelfScreen(
             uiState.showBookmarksDialog -> viewModel.setBookmarksDialogVisible(false)
             uiState.showUnlockCodeDialog -> viewModel.setUnlockCodeDialogVisible(false)
             uiState.showUnlockSuccessPopup -> viewModel.setUnlockSuccessPopupVisible(false)
+            uiState.showHallOfFameDialog -> viewModel.setHallOfFameDialogVisible(false)
+            uiState.showReadingStatsDialog -> viewModel.setReadingStatsDialogVisible(false)
+            uiState.newlyUnlockedBadge != null -> viewModel.dismissBadgeCelebration()
         }
     }
 
@@ -157,6 +166,14 @@ fun ShelfScreen(
                         onOpenBookmarks = {
                             scope.launch { drawerState.close() }
                             viewModel.setBookmarksDialogVisible(true)
+                        },
+                        onOpenHallOfFame = {
+                            scope.launch { drawerState.close() }
+                            viewModel.setHallOfFameDialogVisible(true)
+                        },
+                        onOpenReadingStats = {
+                            scope.launch { drawerState.close() }
+                            viewModel.setReadingStatsDialogVisible(true)
                         }
                     )
                 }
@@ -309,8 +326,31 @@ fun ShelfScreen(
             SystemSettingsDialog(
                 currentSettings = uiState.settings,
                 sysColors = sysColors,
+                unlockedBadgesCount = uiState.readingStats.unlockedBadges.size,
                 onSettingsChanged = viewModel::updateSettings,
+                onShowToast = viewModel::showToast,
                 onDismiss = { viewModel.setSystemSettingsDialogVisible(false) }
+            )
+        }
+        if (uiState.showHallOfFameDialog) {
+            HallOfFameDialog(
+                stats = uiState.readingStats,
+                sysColors = sysColors,
+                onDismiss = { viewModel.setHallOfFameDialogVisible(false) }
+            )
+        }
+        if (uiState.showReadingStatsDialog) {
+            ReadingStatsDialog(
+                stats = uiState.readingStats,
+                sysColors = sysColors,
+                onDismiss = { viewModel.setReadingStatsDialogVisible(false) }
+            )
+        }
+        uiState.newlyUnlockedBadge?.let { badge ->
+            BadgeCelebrationDialog(
+                badge = badge,
+                sysColors = sysColors,
+                onDismiss = { viewModel.dismissBadgeCelebration() }
             )
         }
         if (uiState.showPatchImportDialog) {

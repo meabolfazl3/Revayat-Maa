@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FormatLineSpacing
 import androidx.compose.material.icons.filled.FormatSize
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
@@ -605,7 +606,9 @@ fun ReaderSettingsDialog(
 fun SystemSettingsDialog(
     currentSettings: ReaderUiSettings,
     sysColors: SystemThemeColors,
+    unlockedBadgesCount: Int = 0,
     onSettingsChanged: (ReaderUiSettings) -> Unit,
+    onShowToast: (String) -> Unit = {},
     onDismiss: () -> Unit
 ) {
     Dialog(
@@ -744,6 +747,7 @@ fun SystemSettingsDialog(
                             SystemTheme.values().forEach { themeItem ->
                                 val isSelected = currentSettings.systemTheme == themeItem
                                 val colors = NovelThemes.getSystemColors(themeItem)
+                                val isLocked = themeItem == SystemTheme.CYBER_PURPLE_NEON && unlockedBadgesCount < 2
 
                                 Surface(
                                     shape = RoundedCornerShape(16.dp),
@@ -757,7 +761,11 @@ fun SystemSettingsDialog(
                                         .width(76.dp)
                                         .height(96.dp)
                                         .clickable {
-                                            onSettingsChanged(currentSettings.copy(systemTheme = themeItem))
+                                            if (isLocked) {
+                                                onShowToast("🔒 برای باز کردن این پوسته، حداقل ۲ مدال در اتاق افتخارات کسب کنید!")
+                                            } else {
+                                                onSettingsChanged(currentSettings.copy(systemTheme = themeItem))
+                                            }
                                         }
                                         .testTag("sys_theme_option_${themeItem.id}")
                                 ) {
@@ -766,7 +774,25 @@ fun SystemSettingsDialog(
                                             .fillMaxSize()
                                             .padding(6.dp)
                                     ) {
-                                        if (isSelected) {
+                                        if (isLocked) {
+                                            Surface(
+                                                shape = CircleShape,
+                                                color = Color(0xDD0B0418),
+                                                border = BorderStroke(1.dp, Color(0xFFC084FC)),
+                                                modifier = Modifier
+                                                    .size(22.dp)
+                                                    .align(Alignment.TopEnd)
+                                            ) {
+                                                Box(contentAlignment = Alignment.Center) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Lock,
+                                                        contentDescription = "قفل",
+                                                        tint = Color(0xFFFFD700),
+                                                        modifier = Modifier.size(12.dp)
+                                                    )
+                                                }
+                                            }
+                                        } else if (isSelected) {
                                             Surface(
                                                 shape = CircleShape,
                                                 color = sysColors.accent,

@@ -2,16 +2,22 @@ package com.example.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.example.data.model.BadgeType
 import com.example.data.model.Bookmark
 import com.example.data.model.Chapter
 import com.example.data.model.PersianFont
 import com.example.data.model.ReaderCanvasTheme
 import com.example.data.model.ReaderUiSettings
 import com.example.data.model.ReadingPosition
+import com.example.data.model.ReadingStatsData
 import com.example.data.model.SystemTheme
 import com.example.util.ReleaseSchedule
 import org.json.JSONArray
 import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 class NovelRepository(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("raze_almas_prefs", Context.MODE_PRIVATE)
@@ -42,6 +48,7 @@ class NovelRepository(context: Context) {
         private const val KEY_ALL_CHAPTERS_UNLOCKED = "all_chapters_unlocked"
         private const val KEY_LAST_READ_TIMESTAMP = "last_read_timestamp"
         private const val PREFIX_CHAPTER_POS = "pos_chap_"
+        private const val KEY_READING_STATS = "reading_stats_json"
     }
 
     fun verifyPasscode(input: String): Boolean {
@@ -279,5 +286,207 @@ class NovelRepository(context: Context) {
             ReadingPosition(chapterId = chapterId)
         }
     }
+
+    fun getReadingStats(): ReadingStatsData {
+        val jsonStr = prefs.getString(KEY_READING_STATS, null) ?: return ReadingStatsData()
+        return try {
+            val obj = JSONObject(jsonStr)
+            val totalSeconds = obj.optLong("totalSeconds", 0L)
+            val currentStreak = obj.optInt("currentStreak", 0)
+            val lastActiveDate = obj.optString("lastActiveDate", "")
+            val nightMinutes = obj.optInt("nightMinutes", 0)
+            val morningMinutes = obj.optInt("morningMinutes", 0)
+
+            val dailyMap = mutableMapOf<String, Int>()
+            if (obj.has("dailyMap")) {
+                val mapObj = obj.getJSONObject("dailyMap")
+                val keys = mapObj.keys()
+                while (keys.hasNext()) {
+                    val k = keys.next()
+                    dailyMap[k] = mapObj.getInt(k)
+                }
+            }
+
+            val chaptersCompleted = mutableSetOf<Int>()
+            if (obj.has("chaptersCompleted")) {
+                val arr = obj.getJSONArray("chaptersCompleted")
+                for (i in 0 until arr.length()) {
+                    chaptersCompleted.add(arr.getInt(i))
+                }
+            }
+
+            val badges = mutableSetOf<String>()
+            if (obj.has("badges")) {
+                val arr = obj.getJSONArray("badges")
+                for (i in 0 until arr.length()) {
+                    badges.add(arr.getString(i))
+                }
+            }
+
+            ReadingStatsData(
+                totalReadingSeconds = totalSeconds,
+                dailyMinutesMap = dailyMap,
+                currentStreakDays = currentStreak,
+                lastActiveDate = lastActiveDate,
+                chaptersCompletedToday = chaptersCompleted,
+                unlockedBadges = badges,
+                nightMinutesRead = nightMinutes,
+                morningMinutesRead = morningMinutes
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+            ReadingStatsData()
+        }
+    }
+
+    fun saveReadingStats(stats: ReadingStatsData) {
+        try {
+            val obj = JSONObject().apply {
+                put("totalSeconds", stats.totalReadingSeconds)
+                put("currentStreak", stats.currentStreakDays)
+                put("lastActiveDate", stats.lastActiveDate)
+                put("nightMinutes", stats.nightMinutesRead)
+                put("morningMinutes", stats.morningMinutesRead)
+
+                val mapObj = JSONObject()
+                stats.dailyMinutesMap.forEach { (k, v) -> mapObj.put(k, v) }
+                put("dailyMap", mapObj)
+
+                val chArr = JSONArray()
+                stats.chaptersCompletedToday.forEach { chArr.put(it) }
+                put("chaptersCompleted", chArr)
+
+                val bArr = JSONArray()
+                stats.unlockedBadges.forEach { bArr.put(it) }
+                put("badges", bArr)
+            }
+            prefs.edit().putString(KEY_READING_STATS, obj.toString()).apply()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    fun recordReadingSeconds(deltaSeconds: Long): List<BadgeType> {
+        if (deltaSeconds <= 0) return emptyList()
+
+        val stats = getReadingStats()
+        val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+        val cal = Calendar.getInstance()
+        val hour = cal.get(Calendar.HOUR_OF_DAY)
+
+        val newTotalSeconds = stats.totalReadingSeconds + deltaSeconds
+        val currentDayMinutes = stats.dailyMinutesMap[todayStr] ?: 0
+        val addedMinutes = (deltaSeconds / 60).toInt().coerceAtLeast(1)
+        val newDayMinutes = currentDayMinutes + addedMinutes
+
+        val newDailyMap = stats.dailyMinutesMap.toMutableMap()
+        newDailyMap[todayStr] = newDayMinutes
+
+        var newNightMinutes = stats.nightMinutesRead
+        if (hour in 0..3) {
+            newNightMinutes += addedMinutes
+        }
+
+        var newMorningMinutes = stats.morningMinutesRead
+        if (hour in 5..7) {
+            newMorningMinutes += addedMinutes
+        }
+
+        // Streak evaluation: if user reaches >= 5 minutes today
+        var newStreak = stats.currentStreakDays
+        var newLastActiveDate = stats.lastActiveDate
+
+        if (newDayMinutes >= 5 && stats.lastActiveDate != todayStr) {
+            // Check yesterday
+            val yesterdayCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+            val yesterdayStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(yesterdayCal.time)
+
+            newStreak = if (stats.lastActiveDate == yesterdayStr) {
+                (stats.currentStreakDays + 1).coerceAtLeast(1)
+            } else {
+                1
+            }
+            newLastActiveDate = todayStr
+        }
+
+        // Reset chapters completed today if it's a new day
+        val chaptersToday = if (stats.lastActiveDate != todayStr && stats.dailyMinutesMap[todayStr] == null) {
+            emptySet()
+        } else {
+            stats.chaptersCompletedToday
+        }
+
+        // Evaluate Badges
+        val newlyUnlocked = mutableListOf<BadgeType>()
+        val currentBadges = stats.unlockedBadges.toMutableSet()
+
+        // 1. Night Owl (00:00 - 04:00, >= 10 mins)
+        if (!currentBadges.contains(BadgeType.NIGHT_OWL.id) && newNightMinutes >= 10) {
+            currentBadges.add(BadgeType.NIGHT_OWL.id)
+            newlyUnlocked.add(BadgeType.NIGHT_OWL)
+        }
+
+        // 2. Fiery Reader (streak >= 5 days)
+        if (!currentBadges.contains(BadgeType.FIRE_READER.id) && newStreak >= 5) {
+            currentBadges.add(BadgeType.FIRE_READER.id)
+            newlyUnlocked.add(BadgeType.FIRE_READER)
+        }
+
+        // 3. Word Marathon (>= 3 chapters today)
+        if (!currentBadges.contains(BadgeType.WORD_MARATHON.id) && chaptersToday.size >= 3) {
+            currentBadges.add(BadgeType.WORD_MARATHON.id)
+            newlyUnlocked.add(BadgeType.WORD_MARATHON)
+        }
+
+        // 4. Diamond Lover (total read >= 2 hours = 7200 seconds)
+        if (!currentBadges.contains(BadgeType.DIAMOND_LOVER.id) && newTotalSeconds >= 7200L) {
+            currentBadges.add(BadgeType.DIAMOND_LOVER.id)
+            newlyUnlocked.add(BadgeType.DIAMOND_LOVER)
+        }
+
+        // 5. Early Bird (05:00 - 08:00, >= 5 mins)
+        if (!currentBadges.contains(BadgeType.EARLY_BIRD.id) && newMorningMinutes >= 5) {
+            currentBadges.add(BadgeType.EARLY_BIRD.id)
+            newlyUnlocked.add(BadgeType.EARLY_BIRD)
+        }
+
+        val updatedStats = stats.copy(
+            totalReadingSeconds = newTotalSeconds,
+            dailyMinutesMap = newDailyMap,
+            currentStreakDays = newStreak,
+            lastActiveDate = newLastActiveDate,
+            chaptersCompletedToday = chaptersToday,
+            unlockedBadges = currentBadges,
+            nightMinutesRead = newNightMinutes,
+            morningMinutesRead = newMorningMinutes
+        )
+        saveReadingStats(updatedStats)
+
+        return newlyUnlocked
+    }
+
+    fun recordChapterFinished(chapterId: Int): List<BadgeType> {
+        val stats = getReadingStats()
+        val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+        val updatedChapters = stats.chaptersCompletedToday.toMutableSet()
+        updatedChapters.add(chapterId)
+
+        val newlyUnlocked = mutableListOf<BadgeType>()
+        val currentBadges = stats.unlockedBadges.toMutableSet()
+
+        if (!currentBadges.contains(BadgeType.WORD_MARATHON.id) && updatedChapters.size >= 3) {
+            currentBadges.add(BadgeType.WORD_MARATHON.id)
+            newlyUnlocked.add(BadgeType.WORD_MARATHON)
+        }
+
+        val updatedStats = stats.copy(
+            chaptersCompletedToday = updatedChapters,
+            unlockedBadges = currentBadges,
+            lastActiveDate = if (stats.lastActiveDate.isEmpty()) todayStr else stats.lastActiveDate
+        )
+        saveReadingStats(updatedStats)
+        return newlyUnlocked
+    }
 }
+
 

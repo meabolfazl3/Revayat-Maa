@@ -32,9 +32,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AutoStories
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Lock
@@ -44,6 +46,9 @@ import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SystemUpdateAlt
+import com.example.ui.components.BadgeCelebrationDialog
+import com.example.ui.components.HallOfFameDialog
+import com.example.ui.components.ReadingStatsDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -119,7 +124,10 @@ fun HomeScreen(
         uiState.showPatchImportDialog ||
         uiState.showBookmarksDialog ||
         uiState.showUnlockCodeDialog ||
-        uiState.showUnlockSuccessPopup
+        uiState.showUnlockSuccessPopup ||
+        uiState.showHallOfFameDialog ||
+        uiState.showReadingStatsDialog ||
+        uiState.newlyUnlockedBadge != null
 
     BackHandler {
         when {
@@ -146,6 +154,15 @@ fun HomeScreen(
             }
             uiState.showUnlockSuccessPopup -> {
                 viewModel.setUnlockSuccessPopupVisible(false)
+            }
+            uiState.showHallOfFameDialog -> {
+                viewModel.setHallOfFameDialogVisible(false)
+            }
+            uiState.showReadingStatsDialog -> {
+                viewModel.setReadingStatsDialogVisible(false)
+            }
+            uiState.newlyUnlockedBadge != null -> {
+                viewModel.dismissBadgeCelebration()
             }
             else -> {
                 viewModel.navigateToShelf()
@@ -186,6 +203,14 @@ fun HomeScreen(
                         onOpenBookmarks = {
                             scope.launch { drawerState.close() }
                             viewModel.setBookmarksDialogVisible(true)
+                        },
+                        onOpenHallOfFame = {
+                            scope.launch { drawerState.close() }
+                            viewModel.setHallOfFameDialogVisible(true)
+                        },
+                        onOpenReadingStats = {
+                            scope.launch { drawerState.close() }
+                            viewModel.setReadingStatsDialogVisible(true)
                         }
                     )
                 }
@@ -345,8 +370,34 @@ fun HomeScreen(
             SystemSettingsDialog(
                 currentSettings = uiState.settings,
                 sysColors = sysColors,
+                unlockedBadgesCount = uiState.readingStats.unlockedBadges.size,
                 onSettingsChanged = viewModel::updateSettings,
+                onShowToast = viewModel::showToast,
                 onDismiss = { viewModel.setSystemSettingsDialogVisible(false) }
+            )
+        }
+
+        if (uiState.showHallOfFameDialog) {
+            HallOfFameDialog(
+                stats = uiState.readingStats,
+                sysColors = sysColors,
+                onDismiss = { viewModel.setHallOfFameDialogVisible(false) }
+            )
+        }
+
+        if (uiState.showReadingStatsDialog) {
+            ReadingStatsDialog(
+                stats = uiState.readingStats,
+                sysColors = sysColors,
+                onDismiss = { viewModel.setReadingStatsDialogVisible(false) }
+            )
+        }
+
+        uiState.newlyUnlockedBadge?.let { badge ->
+            BadgeCelebrationDialog(
+                badge = badge,
+                sysColors = sysColors,
+                onDismiss = { viewModel.dismissBadgeCelebration() }
             )
         }
 
@@ -405,7 +456,9 @@ fun HomeDrawerContent(
     onOpenSettings: () -> Unit,
     onOpenContactUs: () -> Unit,
     onOpenAboutUs: () -> Unit,
-    onOpenBookmarks: () -> Unit
+    onOpenBookmarks: () -> Unit,
+    onOpenHallOfFame: () -> Unit,
+    onOpenReadingStats: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -549,6 +602,28 @@ fun HomeDrawerContent(
             titleColor = sysColors.text,
             subtitleColor = sysColors.textMuted,
             onClick = onOpenUnlockCode
+        )
+
+        DrawerMenuItem(
+            icon = Icons.Default.EmojiEvents,
+            title = "اتاق افتخارات",
+            subtitle = "مدال‌ها، رتبه‌ها و افتخارات مطالعه 🏆",
+            iconBg = Color(0xFFF59E0B).copy(alpha = 0.15f),
+            iconTint = Color(0xFFF59E0B),
+            titleColor = sysColors.text,
+            subtitleColor = sysColors.textMuted,
+            onClick = onOpenHallOfFame
+        )
+
+        DrawerMenuItem(
+            icon = Icons.Default.BarChart,
+            title = "آمار مطالعه",
+            subtitle = "ساعات خوانش، استریک روزانه و نمودار 📊",
+            iconBg = Color(0xFF38BDF8).copy(alpha = 0.15f),
+            iconTint = Color(0xFF38BDF8),
+            titleColor = sysColors.text,
+            subtitleColor = sysColors.textMuted,
+            onClick = onOpenReadingStats
         )
 
         DrawerMenuItem(
